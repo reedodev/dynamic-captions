@@ -19,7 +19,7 @@ JIZURA(노래 가사 타이포)와 GitHub 오픈소스 자막 스킬들의 아�
 | `pip install opencv-python-headless` | 얼굴 찾기(`find-faces.py`) | 선택 |
 | 자막이 박혀 있지 않은 원본 영상 | 새 자막과 겹치지 않게 | 필수 |
 | 대본이나 가사 텍스트 | 철자 맞추기(`align-script.mjs`) | 권장 |
-| NVIDIA 그래픽카드 | 빠른 인코딩(`--encoder auto`) | 선택 |
+| NVIDIA 그래픽카드 또는 Apple Silicon 맥 | 빠른 인코딩(`--encoder auto`) | 선택 |
 
 ## 바꿔 쓰기: 이렇게 말하세요
 
@@ -33,6 +33,7 @@ JIZURA(노래 가사 타이포)와 GitHub 오픈소스 자막 스킬들의 아�
 | "이모지 / 밑줄 넣어줘" | `--deco emoji,line` |
 | "색을 바꿔줘" | `--palette mint`(gold, mint, sky, rose, lime) |
 | "빨리 만들어줘" | `--workers 4 --encoder auto` |
+| "H.265(HEVC)로 만들어줘" | `--codec h265` (`--encoder auto`와 같이 쓰면 GPU) |
 | "투명 자막 파일도 줘" | `--alpha` |
 | "문장마다 스타일을 내가 정할게" | `--plan plan.json` |
 
@@ -51,10 +52,11 @@ JIZURA(노래 가사 타이포)와 GitHub 오픈소스 자막 스킬들의 아�
    - 강조할 단어를 정한다(문장마다 1개 정도, 영상에서 실제 중요한 말만): `--emphasis "단어,단어"` 또는 words.json의 `"emph": true`. 정하지 않으면 숫자, 천천히 말한 단어, 가장 긴 단어 순으로 잡힌다.
 3. **작업 폴더 만들기**: `node scripts/make-captions.mjs --video <영상> --words words.aligned.json --out <작업폴더>/job [옵션]`. 프레임 파일이 길이만큼 쌓이므로 디스크 여유가 있는 곳에 둔다. 임시 프레임 폴더는 `--tmp`, 환경변수 `DYNCAP_TMP`, `scripts/local.json`의 `tmp` 순으로 정하고 없으면 시스템 임시 폴더다. 옵션은 아래 "옵션 모음".
 4. **스타일 시안 먼저**: `node scripts/render.mjs preview <job>` → `job/preview/overview.png`(전 스타일 한 장면 비교), `style-<id>.png`(스타일별 4장면), `mix-plan.json`(자동 섞기가 문장마다 고른 스타일과 자리). 시안은 첫 4장면뿐 아니라 **모든 문장**의 자리·크기·얼굴 겹침을 검사한다. **답변 본문에 overview.png를 붙이고 전체 경로를 적는다.** 사용자가 고른 스타일은 `references/choices.md`(없으면 새로 만든다)에 한 줄 적고 다음 영상의 추천 순서에 반영한다. 사용자가 고르기 전에는 전체 렌더를 하지 않는다. 묻지 않는 자동 실행이면 아래 표에서 추천 1개를 고르고 이유를 한 줄 남긴다.
-5. **최종 렌더**: `node scripts/render.mjs final <job> --style <id> [--range 시작,끝] [--alpha] [--encoder auto] [--workers 4]`
+5. **최종 렌더**: `node scripts/render.mjs final <job> --style <id> [--range 시작,끝] [--alpha] [--encoder auto] [--codec h265] [--workers 4]`
    - 긴 영상은 먼저 `--range 0,20` 같은 20초 샘플을 보여 주고 승인 후 전체를 돌린다.
    - `--workers N`(기본 3): N개의 Chrome이 프레임을 나눠 그린다. 75초 1080p에서 1개 197초 → 4개 64초(약 3배). 같은 구간을 1개와 4개로 만들어 비교했을 때 프레임 수가 같고 화면은 거의 같았다(PSNR 55.7dB). `--workers 1`이 옛 방식이다.
-   - `--encoder auto`: NVIDIA GPU 인코더(h264_nvenc)가 되면 쓰고 아니면 CPU로 돌아간다. 기본은 CPU(libx264).
+   - `--encoder auto`: GPU 인코더를 1프레임 시험 인코딩해서 되는 것을 쓴다. NVIDIA(h264_nvenc) → 맥(h264_videotoolbox) → CPU(libx264) 순서. 기본은 CPU(libx264).
+   - `--codec h265`: H.265(HEVC)로 만든다. `--encoder auto`면 hevc_nvenc → hevc_videotoolbox → libx265 순서(셋 다 안 되면 libx264), `--encoder`를 안 주면 libx265. 직접 고를 수도 있다: `--encoder libx264|libx265|h264_nvenc|hevc_nvenc|h264_videotoolbox|hevc_videotoolbox`. H.265 파일에는 애플 기기(QuickTime·사진·아이폰)에서 열리도록 `hvc1` 태그가 붙는다. 화질은 모든 인코더를 libx264 `-crf 16`과 비슷하게 맞췄다(맥 VideoToolbox의 `-q:v`는 Apple Silicon에서만 된다).
    - **final이 `구역 경고`로 멈추면**(긴 문장이 자기 자리 밖으로 나감): `make-captions`를 `--scale`만 0.1~0.2 낮춰서 새 폴더에 다시 만들고 final을 다시 돌린다. 시안을 처음부터 다시 볼 필요는 없지만, 글자 크기를 바꾸면 얼굴 겹침 결과도 바뀌니 `얼굴:` 줄을 다시 읽는다. `--allow-overflow`는 이유를 보고할 때만 쓴다.
    - 결과 파일 이름은 `captioned-<스타일>.mp4`(구간을 주면 `captioned-<스타일>-<시작>-<끝>.mp4`), `--name`으로 바꿀 수 있다. `job/out` 폴더는 첫 렌더가 성공해야 만들어진다. 결과: `job/out/<이름>.mp4`(소리 유지), `--alpha`면 투명 자막 `…-alpha.mov`(ProRes 4444, 70초에 244MB라 필요할 때만), 검수 시트 `…-sheet.png`, 결과 기록 `<이름>.json`(스타일, 인코더, 워커 수, 시간 정밀도, 구역 경고, 읽기 속도, 글씨 크기, 문장별 자리).
    - 렌더 시간은 영상 길이의 약 1~3배다(워커·GPU에 따라). 가변 프레임율 영상(AI 영상 내보내기는 60fps 표시지만 실제 약 24fps)은 `make-captions`가 자동으로 실제 프레임율에 맞춘다.

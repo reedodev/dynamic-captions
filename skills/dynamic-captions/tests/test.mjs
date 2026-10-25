@@ -72,6 +72,16 @@ if (fs.existsSync(fin)) {
   ok(a === 'aac', 'audio is kept');
 }
 
+// 6b) H.265 render with the first HEVC encoder that works on this machine (skipped when none does)
+const hevc = ['hevc_videotoolbox', 'hevc_nvenc', 'libx265'].find((e) => run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=256x256:d=0.1', '-c:v', e, ...(e === 'hevc_videotoolbox' ? ['-q:v', '75'] : []), '-f', 'null', '-']).status === 0); // -q:v as in render.mjs (Apple Silicon only)
+if (hevc) {
+  r = run(node, [path.join(S, 'render.mjs'), 'final', job, '--style', 'mix', '--range', '0,2', '--workers', '1', '--encoder', hevc, '--name', 'h.mp4', '--tmp', tmp]);
+  const hf = path.join(job, 'out', 'h.mp4');
+  const p = fs.existsSync(hf) ? run('ffprobe', ['-v', 'error', '-count_frames', '-select_streams', 'v:0', '-show_entries', 'stream=codec_name,codec_tag_string,nb_read_frames', '-of', 'default=nw=1', hf]).stdout : '';
+  const kv = Object.fromEntries(p.split(/\r?\n/).filter(Boolean).map((l) => l.split('=')));
+  ok(r.status === 0 && kv.codec_name === 'hevc' && kv.codec_tag_string === 'hvc1' && Math.abs(+kv.nb_read_frames - 48) <= 2, `${hevc} render: ${kv.codec_name}/${kv.codec_tag_string}, ${kv.nb_read_frames} frames (hevc/hvc1, about 48)`);
+} else console.log('skip H.265 render (no HEVC encoder in this ffmpeg)');
+
 // 7) parallel render gives the same frame count as one worker
 r = run(node, [path.join(S, 'render.mjs'), 'final', job, '--style', 'block-sweep', '--range', '0,4', '--workers', '3', '--encoder', 'libx264', '--name', 'p.mp4', '--tmp', tmp]);
 const par = path.join(job, 'out', 'p.mp4');

@@ -129,7 +129,7 @@ node $S/render.mjs final job --style mix --range 0,20      # 앞 20초만
 node $S/render.mjs final job --style mix                   # 영상 전체
 ```
 
-완성된 영상은 `job/out/`에 `captioned-mix.mp4`로 생깁니다. 편집 프로그램에 올릴 투명 자막 파일도 필요하면 `--alpha`, 그래픽카드를 쓰려면 `--encoder auto`, 컴퓨터가 느려지면 `--workers 1`을 붙이세요.
+완성된 영상은 `job/out/`에 `captioned-mix.mp4`로 생깁니다. 편집 프로그램에 올릴 투명 자막 파일도 필요하면 `--alpha`, 그래픽카드(NVIDIA, 또는 Apple Silicon 맥의 내장 인코더)를 쓰려면 `--encoder auto`, H.265(HEVC) 파일로 받으려면 `--codec h265`, 컴퓨터가 느려지면 `--workers 1`을 붙이세요.
 
 ## 글꼴
 `--font` 로 글꼴을 고릅니다. 무료 글꼴 5종(SIL OFL, 상업 영상에도 사용 가능)이 함께 들어 있습니다.
@@ -191,6 +191,7 @@ node $S/make-captions.mjs ... --font "C:\fonts\MyFont.ttf"     # 내 글꼴 파�
 | "이모지 / 밑줄 넣어 줘" | `--deco emoji,line` (기본은 꺼져 있음) |
 | "색을 바꿔 줘" | `--palette mint` (gold, mint, sky, rose, lime) |
 | "빨리 만들어 줘" | `--workers 4 --encoder auto` |
+| "H.265(HEVC)로 만들어 줘" | `--codec h265` (`--encoder auto`와 같이 쓰면 그래픽카드 사용) |
 | "투명 자막 파일도 줘" | `--alpha` |
 | "문장마다 모양은 내가 정할게" | `--plan plan.json` |
 

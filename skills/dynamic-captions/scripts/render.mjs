@@ -21,13 +21,31 @@ const JOB = path.resolve(jobArg); if (mode !== 'frames') fs.copyFileSync(new URL
 const { width: W, height: H, fps, duration } = job; const isPortrait = H > W;
 const ff = (args, cwd) => { const r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { stdio: 'inherit', cwd }); if (r.status) throw new Error('ffmpeg failed: ' + args.join(' ').slice(0, 300)); };
 
-// video encoder: --encoder libx264 (default) | h264_nvenc | auto (nvenc if a 1-frame test encode works, else libx264)
+// video encoder: --encoder libx264 (default) | libx265 | h264_nvenc | hevc_nvenc | h264_videotoolbox | hevc_videotoolbox | auto
+//   --codec h264 (default) | h265 only matters for auto and when --encoder is not given (then libx264 / libx265).
+//   auto takes the first GPU encoder that passes a 1-frame test encode: NVENC, then VideoToolbox (macOS), else the CPU encoder.
+//   Quality is set to look about like libx264 -crf 16. HEVC gets the hvc1 tag so QuickTime, Photos and iPhones play it.
+const ENC = {
+  libx264: ['-c:v', 'libx264', '-crf', '16', '-preset', 'medium'],
+  libx265: ['-c:v', 'libx265', '-crf', '18', '-preset', 'medium', '-tag:v', 'hvc1'],
+  h264_nvenc: ['-c:v', 'h264_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '18', '-b:v', '0'],
+  hevc_nvenc: ['-c:v', 'hevc_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '18', '-b:v', '0', '-tag:v', 'hvc1'],
+  h264_videotoolbox: ['-c:v', 'h264_videotoolbox', '-q:v', '75'], // -q:v needs Apple Silicon
+  hevc_videotoolbox: ['-c:v', 'hevc_videotoolbox', '-q:v', '75', '-tag:v', 'hvc1'],
+};
 let usedEnc = 'libx264'; let usedWorkers = 1; const tempDirs = []; // frame folders: removed on every exit path unless --keep
 function venc() {
-  let enc = String(opt.encoder || 'libx264');
-  if (enc === 'auto') { const t = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=256x256:d=0.1', '-c:v', 'h264_nvenc', '-f', 'null', '-'], { stdio: 'ignore' }); enc = t.status === 0 ? 'h264_nvenc' : 'libx264'; }
+  const codec = String(opt.codec || 'h264'); if (codec !== 'h264' && codec !== 'h265') throw new Error('--codec must be h264 or h265');
+  const h265 = codec === 'h265';
+  let enc = String(opt.encoder || (h265 ? 'libx265' : 'libx264'));
+  if (enc === 'auto') {
+    const works = (e) => spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=256x256:d=0.1', ...ENC[e], '-f', 'null', '-'], { stdio: 'ignore' }).status === 0;
+    const tries = h265 ? ['hevc_nvenc', ...(process.platform === 'darwin' ? ['hevc_videotoolbox'] : []), 'libx265'] : ['h264_nvenc', ...(process.platform === 'darwin' ? ['h264_videotoolbox'] : [])];
+    enc = tries.find(works) || 'libx264'; if (h265 && enc === 'libx264') console.log('no H.265 encoder works here, using libx264');
+  }
+  if (!ENC[enc]) throw new Error(`unknown --encoder ${enc}: use auto, ${Object.keys(ENC).join(', ')}`);
   usedEnc = enc; console.log('encoder:', enc);
-  return enc === 'h264_nvenc' ? ['-c:v', 'h264_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '18', '-b:v', '0'] : ['-c:v', 'libx264', '-crf', '16', '-preset', 'medium'];
+  return ENC[enc];
 }
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.json': 'application/json' };
 const srv = await new Promise((res) => { const s = http.createServer((q, r) => { const p = path.join(JOB, decodeURIComponent(new URL(q.url, 'http://x').pathname)); if (!p.startsWith(JOB) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': MIME[path.extname(p).toLowerCase()] || 'application/octet-stream' }); fs.createReadStream(p).pipe(r); }).listen(0, '127.0.0.1', () => res(s)); });
@@ -143,6 +161,7 @@ try {
     for (let n = wn0; n < wn1; n++) { const t = n / fps; const f = path.join(opt.work, `f_${String(i0 + n - wn0).padStart(6, '0')}.png`); if (await ev(`window.visible(${t})`)) await png(t, f); else fs.copyFileSync(wblank, f); }
   } else if (mode === 'final') {
     const style = opt.style; if (!style) throw new Error('--style required');
+    const vargs = venc(); // pick the encoder before drawing frames, so a wrong --encoder stops right away
     const vs = fs.statSync(job.video);
     if (job.videoStat && (vs.size !== job.videoStat.size || Math.abs(vs.mtimeMs - job.videoStat.mtimeMs) > 1000) && !opt.force) throw new Error('영상 파일이 작업 폴더를 만든 뒤 바뀌었습니다. 시안 승인은 무효입니다. make-captions.mjs부터 다시 실행하세요(--force로 무시 가능).');
     await load(style); const report = await qaReport();
@@ -177,7 +196,7 @@ try {
     usedWorkers = workers;
     const outDir = path.join(JOB, 'out'); fs.mkdirSync(outDir, { recursive: true });
     const name = opt.name || `captioned-${style}${opt.range ? `-${ra}-${rb}` : ''}.mp4`; const out = path.join(outDir, name);
-    ff(['-ss', String(ra), '-t', String(N / fps), '-i', job.video, '-framerate', String(fps), '-start_number', '0', '-i', path.join(work, 'f_%06d.png'), '-filter_complex', '[0:v][1:v]overlay=shortest=1:format=auto,format=yuv420p[v]', '-map', '[v]', '-map', '0:a?', ...venc(), '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', out]);
+    ff(['-ss', String(ra), '-t', String(N / fps), '-i', job.video, '-framerate', String(fps), '-start_number', '0', '-i', path.join(work, 'f_%06d.png'), '-filter_complex', '[0:v][1:v]overlay=shortest=1:format=auto,format=yuv420p[v]', '-map', '[v]', '-map', '0:a?', ...vargs, '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', out]);
     let alpha = null;
     if (opt.alpha) { alpha = path.join(outDir, name.replace(/\.mp4$/, '') + '-alpha.mov'); ff(['-framerate', String(fps), '-start_number', '0', '-i', path.join(work, 'f_%06d.png'), '-c:v', 'prores_ks', '-profile:v', '4444', '-pix_fmt', 'yuva444p10le', alpha]); }
     // key=value output: the csv field order and a trailing comma differ between files, so reading the last csv field gave a false 'frames differ' warning
