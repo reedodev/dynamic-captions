@@ -645,6 +645,71 @@
     update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], p = easeExpo((t - w.start + 0.02) / en(0.3)); s.style.opacity = t >= w.start - 0.03 ? clamp(p * 2) : 0; s.style.transform = `translateX(${((1 - p) * 0.8).toFixed(3)}em) skewX(${((1 - p) * -22).toFixed(1)}deg)`; }); },
   };
 
+
+  // ======== v1.2 batch B (2026-10-30): variety TV / news / retro / paper ========
+  // B1. variety-outline : Korean variety-show caption. thick coloured outline, tilted, pops per word
+  S['variety-outline'] = {
+    label: '예능 두꺼운 테두리', slack: 1.15, group: { maxChars: portrait ? 9 : 16, maxWords: portrait ? 3 : 5 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ln.style.transform = 'rotate(-3deg)'; ph.els = ph.words.map((w) => { const c = w === ph.key ? '#FF4D6D' : '#2F6BFF'; const s = mk('span', 'w', ln, w.text); const ring = (d, col) => [[1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7], [.38, .92], [-.38, .92], [.38, -.92], [-.38, -.92], [.92, .38], [-.92, .38], [.92, -.38], [-.92, -.38]].map(([x, y]) => `${(x * d).toFixed(3)}em ${(y * d).toFixed(3)}em 0 ${col}`).join(','); Object.assign(s.style, { color: '#fff', textShadow: ring(0.07, c) + ',' + ring(0.11, '#111') + ',.07em .12em 0 #111' }); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], vis = t >= w.start - 0.02; s.style.opacity = vis ? 1 : 0; s.style.transform = `scale(${(vis ? 0.6 + 0.4 * easeBack((t - w.start) / en(0.2)) : 0.6).toFixed(3)})`; }); },
+  };
+  // B2. alert-bar : breaking-news style red band with a blinking dot (no extra words added)
+  S['alert-bar'] = {
+    label: '속보 빨간 띠', group: { maxChars: portrait ? 12 : 24, maxWords: portrait ? 4 : 7 },
+    build(ph, el) { const bar = mk('div', 'card', el); Object.assign(bar.style, { background: 'linear-gradient(90deg,#C8102E,#E5243B)', borderRadius: '.1em', padding: '.16em .6em .22em 1.1em', position: 'relative', fontSize: '.9em', boxShadow: '0 .15em .5em rgba(0,0,0,.45)', borderBottom: '.08em solid #fff' }); const dot = mk('i', 'dot', bar); Object.assign(dot.style, { position: 'absolute', left: '.38em', top: '50%', width: '.32em', height: '.32em', marginTop: '-.16em', borderRadius: '50%', background: '#fff' }); ph.dot = dot; const ln = mk('div', 'ln', bar); ph.card = bar; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); if (w === ph.key) s.style.color = '#FFE14D'; return s; }); },
+    update(ph, t) { const e = easeExpo((t - ph.vs) / en(0.25)); ph.card.style.clipPath = `inset(0 ${((1 - e) * 100).toFixed(1)}% 0 0)`; ph.dot.style.opacity = Math.floor(t * 3) % 2 ? 0.25 : 1; ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0.35; }); },
+  };
+  // B3. vhs-retro : 90s VHS look. soft colour fringe, scan lines on the letters, a small wobble
+  S['vhs-retro'] = {
+    label: 'VHS 레트로', group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = 'CapCalm,CapMain,CapBase,sans-serif'; ph.wrap = ln; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); Object.assign(s.style, { color: w === ph.key ? '#FFE9A8' : '#F2F2F2', textShadow: `.035em 0 0 rgba(255,50,80,.8),-.035em 0 0 rgba(60,200,255,.8),` + OUT(0.05), backgroundImage: 'repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 .04em,transparent .04em .09em)', webkitBackgroundClip: 'text', backgroundClip: 'text' }); return s; }); },
+    update(ph, t) { ph.wrap.style.transform = `translateX(${(Math.sin(t * 2.3) * 0.015 + (rnd(7, t, 12) > 0.42 ? 0.03 : 0)).toFixed(3)}em)`; ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0; }); },
+  };
+  // B4. comic-burst : the key word sits in a yellow comic starburst (sound-effect panel)
+  S['comic-burst'] = {
+    label: '만화 효과음 별', slack: 1.2, group: { maxChars: portrait ? 10 : 18, maxWords: portrait ? 3 : 5 },
+    build(ph, el) {
+      buildRows(ph, el, '0.7em', (ks) => { Object.assign(ks.style, { fontFamily: DISP, fontWeight: 400, fontSize: '1.45em', color: '#111', padding: '.42em .55em', isolation: 'isolate' }); const b = mk('i', 'burst', ks); const pts = []; for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2, r = i % 2 ? 36 : 50; pts.push(`${(50 + r * Math.cos(a)).toFixed(1)}% ${(50 + r * Math.sin(a) * 0.92).toFixed(1)}%`); } Object.assign(b.style, { position: 'absolute', inset: '-.05em -.1em', background: '#FFD60A', clipPath: `polygon(${pts.join(',')})`, zIndex: -1, filter: 'drop-shadow(.05em .06em 0 #111)' }); });
+    },
+    update(ph, t) { ph.words.forEach((w) => { const s = ph.els[w.i], vis = t >= w.start - 0.01, p = (t - w.start) / en(0.22); if (w === ph.key) { s.style.opacity = vis ? 1 : 0; s.style.transform = `rotate(-6deg) scale(${(vis ? 0.5 + 0.5 * easeBack(p) : 0.5).toFixed(3)})`; } else smallEnter(s, p, vis); }); },
+  };
+  // B5. tape-strip : each word printed on a strip of masking tape, slightly crooked
+  S['tape-strip'] = {
+    label: '마스킹 테이프', group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.columnGap = '.18em'; ph.els = ph.words.map((w, k) => { const s = mk('span', 'w', ln, w.text); Object.assign(s.style, { background: w === ph.key ? 'rgba(255,214,10,.92)' : 'rgba(240,236,226,.93)', color: '#1d1d1f', padding: '.06em .3em .1em', clipPath: 'polygon(2% 0,98% 4%,100% 50%,97% 100%,3% 96%,0 52%)', transform: `rotate(${((k % 3) - 1) * 1.8}deg)`, fontSize: '.9em' }); s.rot = ((k % 3) - 1) * 1.8; return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], p = easeOut((t - w.start + 0.02) / en(0.2)); s.style.opacity = t >= w.start - 0.03 ? 1 : 0; s.style.transform = `rotate(${s.rot}deg) translateY(${((1 - p) * -0.2).toFixed(3)}em)`; }); },
+  };
+  // B6. paper-cut : words on cut-out coloured paper pieces (collage)
+  S['paper-cut'] = {
+    label: '색종이 오려 붙이기', group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { const cols = ['#FF6B6B', '#4DABF7', '#FFD43B', '#69DB7C', '#B197FC']; const ln = mk('div', 'ln', el); ln.style.columnGap = '.14em'; ph.els = ph.words.map((w, k) => { const s = mk('span', 'w', ln, w.text); const bg = cols[(k + ph.k) % cols.length]; Object.assign(s.style, { background: bg, color: '#111', padding: '.08em .28em .12em', fontFamily: DISP, fontWeight: 400, boxShadow: '.05em .07em 0 rgba(0,0,0,.55)' }); s.rot = (rnd(k, ph.k, 1) * 8).toFixed(1); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], vis = t >= w.start - 0.02; s.style.opacity = vis ? 1 : 0; s.style.transform = `rotate(${s.rot}deg) scale(${(vis ? 0.8 + 0.2 * easeBack((t - w.start) / en(0.18)) : 0.8).toFixed(3)})`; }); },
+  };
+  // B7. sticker-peel : thick white sticker outline with a shadow, slapped on with a twist
+  S['sticker-peel'] = {
+    label: '스티커 붙이기', slack: 1.12, group: { maxChars: portrait ? 9 : 16, maxWords: portrait ? 3 : 5 },
+    build(ph, el, mix) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); const o = [[1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]].map(([x, y]) => `${(x * 0.11).toFixed(3)}em ${(y * 0.11).toFixed(3)}em 0 #fff`).join(','); Object.assign(s.style, { color: w === ph.key ? keyColor(ph, mix) === '#FFFFFF' ? PAL.accent : keyColor(ph, mix) : '#1b1b22', textShadow: o + ',.06em .12em .1em rgba(0,0,0,.5)' }); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], vis = t >= w.start - 0.02, p = easeBack((t - w.start) / en(0.22)); s.style.opacity = vis ? 1 : 0; s.style.transform = `rotate(${((1 - clamp(p)) * 14 - 2).toFixed(1)}deg) scale(${(vis ? 0.7 + 0.3 * p : 0.7).toFixed(3)})`; }); },
+  };
+  // B8. doodle-circle : a hand-drawn loop is scribbled around the key word
+  S['doodle-circle'] = {
+    label: '낙서 동그라미', slack: 1.05, group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) { s.style.color = PAL.accent; const NS = 'http://www.w3.org/2000/svg'; const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 100 40'); svg.setAttribute('preserveAspectRatio', 'none'); Object.assign(svg.style, { position: 'absolute', left: '-14%', top: '-28%', width: '128%', height: '156%', overflow: 'visible', pointerEvents: 'none' }); const path = document.createElementNS(NS, 'path'); path.setAttribute('d', 'M60 3 C25 0 3 9 4 21 C5 33 33 39 58 37 C83 35 98 27 96 16 C94 6 72 2 45 5'); Object.assign(path.style, { fill: 'none', stroke: PAL.accent2, strokeWidth: '2.6', strokeLinecap: 'round', vectorEffect: 'non-scaling-stroke' }); path.style.strokeWidth = (0.1 * FS) + 'px'; path.setAttribute('pathLength', '100'); path.style.strokeDasharray = '100'; svg.appendChild(path); s.appendChild(svg); s.path = path; } return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k]; s.style.opacity = t >= w.start - 0.03 ? 1 : 0.55; if (s.path) s.path.style.strokeDashoffset = (100 * (1 - easeOut((t - w.start) / en(0.45)))).toFixed(1); }); },
+  };
+  // B9. pixel-game : 8-bit game text. hard pixel shadow in steps, letters appear in steps on a dark box
+  S['pixel-game'] = {
+    label: '8비트 게임', group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { const card = mk('div', 'card', el); Object.assign(card.style, { background: '#0b0b18', border: '.08em solid #fff', boxShadow: '0 0 0 .06em #0b0b18,.1em .1em 0 .06em #5B5BFF', padding: '.14em .5em .2em', fontSize: '.88em' }); const ln = mk('div', 'ln', card); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.card = card; ph.chars = []; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, ''); s.style.color = w === ph.key ? '#7CFF6B' : '#fff'; s.style.textShadow = '.06em .06em 0 #5B5BFF'; ph.chars.push(letters(w, s)); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const cs = ph.chars[k], n = Math.floor(clamp((t - w.start) / Math.max(en(0.15), w.dur * 0.7)) * cs.length + (t >= w.start ? 1 : 0)); cs.forEach((c, i) => { c.style.opacity = i < n ? 1 : 0; }); }); ph.card.style.opacity = t >= ph.vs ? 1 : 0; },
+  };
+  // B10. retro-shadow : retro 3D lettering with a long stepped extrusion in the accent colour
+  S['retro-shadow'] = {
+    label: '레트로 입체 그림자', slack: 1.08, group: { maxChars: portrait ? 9 : 16, maxWords: portrait ? 3 : 5 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.color = w === ph.key ? '#FFF3C4' : '#fff'; return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], p = easeOut((t - w.start) / en(0.3)), n = Math.round(6 * p); const sh = []; for (let i = 1; i <= 6; i++) sh.push(`${(i * 0.018 * (i <= n ? 1 : 0)).toFixed(3)}em ${(i * 0.018 * (i <= n ? 1 : 0)).toFixed(3)}em 0 ${i === 6 ? '#111' : PAL.accent2}`); s.style.textShadow = sh.join(',') + ',0 0 .02em #111'; s.style.opacity = t >= w.start - 0.03 ? 1 : 0; s.style.transform = `translate(${(-0.05 * p).toFixed(3)}em,${(-0.05 * p).toFixed(3)}em)`; }); },
+  };
+
   // ---------- mix: one style per phrase ----------
   const MIX_BASE = ['block-sweep', 'line-rise', 'chip-label', 'lead-big', 'underline-ink', 'stack-kinetic', 'karaoke-fill', 'mask-slide', 'marker-swipe', 'rise-lines'];
   const MIX_KEY = ['hero-key', 'stamp', 'lead-big'];
