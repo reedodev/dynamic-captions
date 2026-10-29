@@ -90,7 +90,8 @@ This does the listening, the folder and the style sheet for you:
 
 ```bash
 node skills/dynamic-captions/scripts/start.mjs my.mp4 --lang en --out job
-```n
+```
+
 It stops when job/preview/overview.png is ready. Open it, choose a style, then run the last command it prints (ender.mjs final ...). Options you can add: `--script lyrics.txt` (fix the spelling from your lyrics), `--faces` (keep captions off faces), `--beat` (pulse on the beat), `--model small` (faster).
 
 ### Way 3: type every step yourself
@@ -175,7 +176,38 @@ Letters your font does not have are drawn in Pretendard, so you never see empty 
 | `news-bar` | a news-style dark bar |
 | `typewriter` | letters appear one by one with a blinking cursor |
 | `wave` | the spoken word's letters bob like a wave |
+| `sway-breeze` | letters sway gently like leaves (relaxed, happy lines) |
+| `jitter-nerve` | letters tremble (urgent, nervous lines) |
+| `heart-thump` | the key word beats like a heart, pink (excited, fluttering lines) |
+| `tilt-wonder` | the line tilts its head, a question mark leans in (questions, puzzled lines) |
+| `jolt-pop` | each word jumps out with a big overshoot (surprise) |
+| `droop-sigh` | letters sag down and turn grey-blue (disappointment) |
+| `boom-shake` | yellow letters slam in and the caption shakes (shock, strong emphasis) |
+| `neon-flicker` | flickers on like a neon tube, then holds (titles on dark footage) |
+| `duo-tight` | small line on top, big line below, tight leading (talking videos) |
+| `rise-lines` | each line rises from behind a hidden edge (like line-rise, per line) (calm explainers) |
+| `num-box` | a box draws itself around the number / key word (prices, dates, clauses) |
+| `chip-pop` | the key word pops out of a centred pill (one key word) |
+| `mask-slide` | words slide up out of a hidden slot (clean editorial look) |
+| `flip-card` | a dark card flips forward in 3D (info lines) |
+| `glitch-split` | colour split and a short jolt, then it settles (tech / game shorts) |
+| `script-write` | hand lettering is written left to right with a pen dot (everyday, warm videos) |
+| `speech-bubble` | a white comic speech bubble pops in (dialogue, variety) |
+| `marker-swipe` | a highlighter is dragged across the key word (explainers) |
+| `bounce-word` | words drop in and bounce (cheerful shorts) |
+| `wobble-outline` | a second outline wobbles around the letters (playful titles) |
+| `grad-shift` | a colour gradient flows through the letters (music, titles) |
+| `chorus-zoom` | the whole line slowly zooms in with a glow (song choruses) |
+| `ink-seal` | a red seal is pressed onto the key word (conclusions) |
 | `mix` | picks a different look for each sentence (a good first choice) |
+
+### 23 new styles (1.1.0)
+
+Each new style on the same synthetic scene (the 3.7 s moment of the test clip).
+
+<p align="center"><img src="docs/new-styles-portrait.jpg" alt="23 new styles, portrait" width="420"> <img src="docs/new-styles-landscape.jpg" alt="23 new styles, landscape" width="420"></p>
+
+Use the emotion / sound-word motions (sway, tremble, heartbeat, head-tilt, jolt, droop, boom) only 2-4 times per video. `mix` adds them on emotion words by itself and stops at 4 (`--fx-max`, turn off with `--fx off`). Emotion word detection is Korean-only for now.
 
 ## Say it in plain words
 
@@ -193,6 +225,9 @@ You do not have to remember options. Tell the assistant what you want:
 | "make it faster" | `--workers 4 --encoder auto` |
 | "I also want a transparent caption file" | `--alpha` |
 | "I will choose the look for each sentence" | `--plan plan.json` |
+| "no emotion effects" / "only twice" | `--fx off` / `--fx-max 2` |
+| "tighter two-line captions" | `--style duo-tight --line-ratio 0.4 --line-gap 4` |
+| "cuts are fast, captions feel slow" | automatic; faster with `--speed 0.6` |
 
 ## Something went wrong?
 
@@ -219,6 +254,10 @@ You do not have to remember options. Tell the assistant what you want:
 - Timing for rap and songs is rough, because it comes from Whisper (a word is capped at 1.8 s). There is no forced alignment yet.
 - Only front-facing human faces are found. Cartoons, animals and people seen from behind can be missed. Hands, products and bodies are not avoided.
 - Whether viewers like a style is not tested. Choose from the style sheet.
+
+## Changes
+
+[CHANGELOG.md](CHANGELOG.md)
 
 ## Tests
 

@@ -7,7 +7,6 @@
 | 출처 | 라이선스 | 참고한 것 |
 |---|---|---|
 | [JIZURA](https://852wa.github.io/JIZURA/) ([852wa/JIZURA](https://github.com/852wa/JIZURA)) | MIT | 노래 가사 타이포 방식, 읽히지 않던 설정(스크램블·강한 글리치)을 피하는 기준 |
-| [sequence_ai의 Threads 게시물](https://www.threads.com/@sequence_ai/post/De25KQAD6G7) | 공개 게시물 | 문장마다 스타일이 바뀌고, 앞말은 작게 핵심어는 크게 보여 주는 방식. 해당 유료 상품은 구매하지 않았고 코드·스타일 파일을 보지 않았습니다. 공개 영상 화면에서 보이는 방식만 참고했습니다 |
 | [iart-ai/kinetic-typography-skills](https://github.com/iart-ai/kinetic-typography-skills) | MIT | 글자·단어·줄 쪼개기 단위와 등장 시차 수치 |
 | [francozanardi/pycaps](https://github.com/francozanardi/pycaps) | MIT | 줄 패널 강조(`line-focus`), 단어 3상태(안 말함·말하는 중·말함) |
 | [ItisShikhar/captioncat](https://github.com/ItisShikhar/captioncat) | MIT | 화면 폭을 채우는 큰 글씨(`impact-wide`), 쉼에 따른 줄 바꿈 아이디어 |
@@ -42,3 +41,8 @@
 | [Gaegu](https://fonts.google.com/specimen/Gaegu) | The Gaegu Project Authors |
 
 글꼴은 수정하지 않은 원본 파일입니다. 이 저장소의 MIT 라이선스는 글꼴과 모델 파일에는 적용되지 않으며 각자의 라이선스를 따릅니다.
+
+## 1.1.0 새 스타일
+
+- 새 스타일 23개(감정·의성어 7종, 두 줄 행간, 네온, 줄 올라오기, 숫자 상자, 칩, 글리치, 손글씨, 말풍선, 형광펜 등)는 이 저장소에서 새로 쓴 코드입니다. 다른 프로젝트의 코드를 복사하지 않았습니다. 자주 쓰이는 자막 연출(키네틱 타이포, 예능 자막, 네온 간판, 형광펜 강조)을 개념으로 삼았습니다.
+- 새 글꼴은 추가하지 않았습니다(기존 OFL 글꼴 5종만 사용).

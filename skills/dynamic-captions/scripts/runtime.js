@@ -103,6 +103,7 @@
 
   // ---------- style library ----------
   const S = {};
+  let SPD = 1; // entrance speed factor (1 = normal, smaller = faster), set from phrase timings below
 
   // 1. block-sweep : colour block covers the word while it is spoken
   S['block-sweep'] = {
@@ -404,15 +405,210 @@
     update(ph, t) { ph.card.style.opacity = easeOut((t - ph.vs) / 0.18); },
   };
 
+
+  // ======== v1.1 additions (2026-10-29): emotion / sound-word motions, layout and decoration styles ========
+  // en(): entrance animations get shorter when captions change quickly (fast cuts / fast talk). SPD is set from the phrase timings.
+  const en = (x) => x * SPD;
+  const rnd = (i, t, f = 30) => { const v = Math.sin(i * 12.9898 + Math.floor(t * f) * 78.233) * 43758.5453; return v - Math.floor(v) - 0.5; };
+  const letters = (w, s) => [...w.text].map((c) => { const i = mk('span', 'c', s, c); i.style.display = 'inline-block'; return i; });
+  const charLine = (ph, el, font) => { const ln = mk('div', 'ln', el); if (font) { ln.style.fontFamily = font; ln.style.fontWeight = 400; } ph.chars = []; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, ''); s.style.textShadow = OUT(0.065); ph.chars.push(letters(w, s)); return s; }); return ln; };
+  const DISP = 'CapDisplay,CapMain,CapBase,sans-serif';
+
+  // E1. sway-breeze : relaxed / pleasant. letters sway softly like leaves, mint key
+  S['sway-breeze'] = {
+    label: '살랑 바람(여유·기분 좋음)', group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el) { charLine(ph, el); ph.words.forEach((w, k) => { if (w === ph.key) ph.els[k].style.color = '#9FF3D2'; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const vis = t >= w.start - 0.02, p = easeOut((t - w.start) / en(0.3)); ph.els[k].style.opacity = vis ? p : 0; ph.chars[k].forEach((c, i) => { const a = Math.sin(t * 3.2 + i * 0.8); c.style.transform = `translateY(${(a * 0.06 + (1 - p) * 0.25).toFixed(3)}em) rotate(${(a * 6).toFixed(2)}deg)`; }); }); },
+  };
+  // E2. jitter-nerve : urgent / nervous. letters tremble, pale ice-blue key
+  S['jitter-nerve'] = {
+    label: '덜덜 떨림(다급·긴장)', group: { maxChars: portrait ? 9 : 18, maxWords: portrait ? 3 : 5 },
+    build(ph, el) { charLine(ph, el, DISP); ph.words.forEach((w, k) => { ph.els[k].style.color = w === ph.key ? '#BFE3FF' : '#fff'; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const vis = t >= w.start - 0.02; ph.els[k].style.opacity = vis ? 1 : 0; const amp = w === ph.key ? 0.035 : 0.018; ph.chars[k].forEach((c, i) => { c.style.transform = vis ? `translate(${(rnd(i + k * 7, t) * amp * 2).toFixed(3)}em,${(rnd(i * 3 + k, t + 0.5) * amp * 2).toFixed(3)}em)` : 'none'; }); }); },
+  };
+  // E3. heart-thump : excited / fluttering. key word beats twice like a heart, pink glow
+  S['heart-thump'] = {
+    label: '두근 박동(설렘)', slack: 1.2, group: { maxChars: portrait ? 11 : 20, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { buildRows(ph, el, '0.72em', (ks) => Object.assign(ks.style, { fontFamily: DISP, fontWeight: 400, fontSize: '1.7em', lineHeight: '1.05', color: '#FF8FC1', textShadow: OUT(0.05) + ',0 0 .35em #FF5FA266' })); },
+    update(ph, t) {
+      ph.words.forEach((w) => { const s = ph.els[w.i], vis = t >= w.start - 0.01, p = (t - w.start) / en(0.2);
+        if (w === ph.key) { const c = (((t - w.start) % 0.9) + 0.9) % 0.9, beat = Math.exp(-c * 14) + (c > 0.22 ? 0.7 * Math.exp(-(c - 0.22) * 14) : 0); s.style.opacity = vis ? 1 : 0; s.style.transform = `scale(${(vis ? (0.8 + 0.2 * easeBack(p)) * (1 + 0.12 * beat) : 0.8).toFixed(4)})`; }
+        else smallEnter(s, p, vis); });
+    },
+  };
+  // E4. tilt-wonder : curious / puzzled. the phrase tilts its head, a question mark leans in
+  S['tilt-wonder'] = {
+    label: '갸웃 기울기(궁금·의아)', slack: 1.15, group: { maxChars: portrait ? 10 : 16, maxWords: portrait ? 3 : 5 },
+    build(ph, el) {
+      const wrap = mk('div', 'ln', el); wrap.style.transformOrigin = '50% 90%'; ph.wrap = wrap;
+      ph.els = ph.words.map((w) => { const s = mk('span', 'w', wrap, w.text); s.style.textShadow = OUT(0.065); if (w === ph.key) s.style.color = '#C9B6FF'; return s; });
+      if (!/\?$/.test(ph.words[ph.words.length - 1].text)) { const q = mk('span', 'w', wrap, '?'); Object.assign(q.style, { fontFamily: DISP, fontWeight: 400, color: '#C9B6FF', textShadow: OUT(0.06), fontSize: '1.15em' }); ph.q = q; }
+    },
+    update(ph, t) {
+      const e = easeOut((t - ph.vs) / en(0.45)); ph.wrap.style.transform = `rotate(${((portrait ? -4 : -2.5) * e).toFixed(2)}deg)`;
+      ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.02 ? 1 : 0; });
+      if (ph.q) { const last = ph.words[ph.words.length - 1], q = easeBack((t - last.end + 0.1) / en(0.25)); ph.q.style.opacity = t >= last.end - 0.1 ? 1 : 0; ph.q.style.transform = `rotate(${(14 - 10 * clamp(q)).toFixed(1)}deg) scale(${(0.5 + 0.5 * q).toFixed(3)})`; }
+    },
+  };
+  // E5. jolt-pop : surprise. each word jumps out from nothing with a big overshoot, tangerine key
+  S['jolt-pop'] = {
+    label: '깜짝 튀기(놀람)', slack: 1.3, noFade: true, scale: 1.15, group: { maxChars: portrait ? 8 : 14, maxWords: 3 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.color = w === ph.key ? '#FFB547' : '#fff'; s.style.textShadow = OUT(0.055); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], vis = t >= w.start - 0.01, p = clamp((t - w.start) / en(0.28)); const sc = vis ? (p < 0.45 ? 1.2 * easeOut(p / 0.45) : 1.2 - 0.2 * easeOut((p - 0.45) / 0.55)) : 0; s.style.opacity = vis ? 1 : 0; s.style.transform = `translateY(${(0.12 * Math.sin(Math.PI * p)).toFixed(3)}em) scale(${sc.toFixed(3)})`; }); },
+  };
+  // E6. droop-sigh : disappointed. letters sag downward one by one and turn grey-blue
+  S['droop-sigh'] = {
+    label: '시무룩 처짐(실망·아쉬움)', group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el) { charLine(ph, el, 'CapCalm,CapMain,CapBase,sans-serif'); },
+    update(ph, t) { ph.words.forEach((w, k) => { const vis = t >= w.start - 0.02; ph.els[k].style.opacity = vis ? 1 : 0; const n = ph.chars[k].length; ph.chars[k].forEach((c, i) => { const p = easeOut((t - w.start - i * 0.05) / en(0.6)); c.style.transform = `translateY(${(p * 0.12 * (0.4 + i / n)).toFixed(3)}em) rotate(${(p * (w === ph.key ? 5 : 2)).toFixed(1)}deg)`; c.style.color = `rgb(${(255 - 95 * p) | 0},${(255 - 70 * p) | 0},${(255 - 40 * p) | 0})`; c.style.opacity = (1 - 0.25 * p).toFixed(3); }); }); },
+  };
+  // E7. boom-shake : shock / strong emphasis. yellow display letters slam and the caption shakes
+  S['boom-shake'] = {
+    label: '쾅 충격(강조)', slack: 1.2, noFade: true, scale: 1.2, group: { maxChars: portrait ? 7 : 12, maxWords: 2 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ln.style.lineHeight = '1.0'; ph.wrap = ln; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.color = '#FFE14D'; s.style.textShadow = OUT(0.06) + ',0 .06em 0 #b8860b'; return s; }); },
+    update(ph, t) { const d = t - ph.key.start, a = d >= 0 ? Math.exp(-d * 9) : 0; ph.wrap.style.transform = `translate(${(rnd(1, t, 40) * 0.22 * a).toFixed(3)}em,${(rnd(2, t, 40) * 0.18 * a).toFixed(3)}em) rotate(${(rnd(3, t, 40) * 5 * a).toFixed(2)}deg)`; ph.words.forEach((w, k) => { const vis = t >= w.start - 0.01, p = easeOut((t - w.start) / en(0.12)); ph.els[k].style.opacity = vis ? 1 : 0; ph.els[k].style.transform = `scale(${(vis ? 1.5 - 0.5 * p : 1.5).toFixed(3)})`; }); },
+  };
+
+  // L1. neon-flicker : neon sign title. glowing letters flicker on, then hold steady
+  S['neon-flicker'] = {
+    label: '네온 깜빡(형광등 제목)', group: { maxChars: portrait ? 9 : 18, maxWords: portrait ? 3 : 5 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.els = ph.words.map((w) => { const c = w === ph.key ? PAL.accent2 : '#7DF9FF'; const s = mk('span', 'w', ln, w.text); s.style.color = '#F4FFFF'; s.style.textShadow = `0 0 .04em #fff,0 0 .14em ${c},0 0 .32em ${c},0 0 .6em ${c}aa,0 .04em .08em rgba(0,0,0,.6)`; return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const d = t - w.start; let o = 0; if (d >= 0) o = d > en(0.45) ? 1 : (rnd(k + 5, t, 24) > -0.1 ? 1 : 0.15); ph.els[k].style.opacity = o; }); },
+  };
+  // L2. duo-tight : two lines with tight leading. small lead line on top, big line below (--line-ratio, --line-gap)
+  S['duo-tight'] = {
+    label: '두 줄 촘촘(작은 줄+큰 줄)', group: { maxChars: portrait ? 13 : 24, maxWords: portrait ? 5 : 8 },
+    build(ph, el, mix) {
+      const col = mk('div', 'col', el); col.style.rowGap = ((D.lineGap ?? 6) * U) + 'px'; const R = D.lineRatio || 0.45;
+      const cut = Math.max(1, Math.floor(ph.words.length / 2)); const top = ph.words.slice(0, cut), bot = ph.words.slice(cut);
+      const big = bot.length ? bot : top, small = bot.length ? top : [], B = 1.35;
+      const r1 = mk('div', 'ln', col); r1.style.fontSize = Math.max(0.66, B * R).toFixed(3) + 'em'; r1.style.lineHeight = '1.0';
+      const r2 = mk('div', 'ln', col); r2.style.fontSize = B + 'em'; r2.style.lineHeight = '0.98'; r2.style.fontFamily = DISP; r2.style.fontWeight = 400;
+      ph.els = []; small.forEach((w) => { const s = mk('span', 'w', r1, w.text); s.style.textShadow = OUT(0.08); ph.els[ph.words.indexOf(w)] = s; });
+      big.forEach((w) => { const s = mk('span', 'w', r2, w.text); s.style.textShadow = OUT(0.05); s.style.color = w === ph.key ? keyColor(ph, mix) : '#fff'; ph.els[ph.words.indexOf(w)] = s; });
+    },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], vis = t >= w.start - 0.02; smallEnter(s, (t - w.start) / en(0.18), true); if (!vis) { s.style.opacity = 0.38; s.style.transform = 'none'; } }); }, // unspoken words wait dimmed, so both lines keep their final layout
+  };
+  // L3. rise-lines : each line rises from behind an invisible edge, one line after another
+  S['rise-lines'] = {
+    label: '줄마다 올라오기', group: { maxChars: portrait ? 13 : 26, maxWords: portrait ? 5 : 8 },
+    build(ph, el) {
+      const col = mk('div', 'col', el); ph.lines = []; ph.els = []; const per = portrait ? 2 : 4;
+      for (let i = 0; i < ph.words.length; i += per) { const clip = mk('div', 'ln', col); clip.style.overflow = 'hidden'; clip.style.padding = '0 .1em .08em'; const inner = mk('div', 'ln', clip); const ws = ph.words.slice(i, i + per); ws.forEach((w) => { const s = mk('span', 'w', inner, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) s.style.color = PAL.accent; ph.els[ph.words.indexOf(w)] = s; }); ph.lines.push({ inner, at: ws[0].start }); }
+    },
+    update(ph, t) { ph.lines.forEach((l) => { const p = easeExpo((t - l.at + 0.04) / en(0.32)); l.inner.style.transform = `translateY(${t < l.at - 0.04 ? 110 : ((1 - p) * 110).toFixed(2)}%)`; l.inner.style.opacity = t < l.at - 0.04 ? 0 : 1; l.inner.querySelectorAll('.w').forEach((e) => { e.style.opacity = t < l.at - 0.04 ? 0 : 1; }); }); },
+  };
+  // L4. num-box : numbers / key terms sit in a box that draws itself while spoken (prices, dates, clauses)
+  S['num-box'] = {
+    label: '숫자 상자(조항·숫자 강조)', slack: 1.08, group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) {
+      const ln = mk('div', 'ln', el); ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06);
+        if (w === ph.key) { Object.assign(s.style, { padding: '.02em .22em', color: PAL.accent, fontFamily: DISP, fontWeight: 400, isolation: 'isolate' }); const b = mk('i', 'bx', s); Object.assign(b.style, { position: 'absolute', inset: '0', border: `.07em solid ${PAL.accent}`, borderRadius: '.12em', background: 'rgba(0,0,0,.4)', zIndex: -1, clipPath: 'inset(0 100% 0 0)' }); s.bx = b; }
+        return s; });
+    },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k]; s.style.opacity = t >= w.start - 0.03 ? 1 : 0.35; if (s.bx) s.bx.style.clipPath = `inset(0 ${((1 - easeOut((t - w.start) / en(0.3))) * 100).toFixed(1)}% 0 0)`; }); },
+  };
+  // L5. chip-pop : the key word pops out of a centred pill; pill and word share one centre (no drift)
+  S['chip-pop'] = {
+    label: '칩 팝아웃(가운데 맞춤)', slack: 1.25, group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el, mix) { const c = keyColor(ph, mix); buildRows(ph, el, '0.74em', (ks) => Object.assign(ks.style, { fontFamily: DISP, fontWeight: 400, fontSize: '1.45em', color: '#111', padding: '.08em .45em .1em', background: c === '#FFFFFF' ? PAL.accent : c, borderRadius: '1em', transformOrigin: '50% 50%', boxShadow: '0 .08em .3em rgba(0,0,0,.4)' })); },
+    update(ph, t) { ph.words.forEach((w) => { const s = ph.els[w.i], vis = t >= w.start - 0.01, p = (t - w.start) / en(0.24); if (w === ph.key) { s.style.opacity = vis ? 1 : 0; s.style.transform = `scale(${(vis ? 0.4 + 0.6 * easeBack(p) : 0.4).toFixed(3)})`; } else smallEnter(s, p, vis); }); },
+  };
+  // L6. mask-slide : words slide up out of a hidden slot, word by word (clean, editorial)
+  S['mask-slide'] = {
+    label: '가림막 밀어 올리기', group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 7 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ph.els = []; ph.inn = ph.words.map((w, k) => { const s = mk('span', 'w', ln); s.style.overflow = 'hidden'; s.style.verticalAlign = 'bottom'; s.style.padding = '0 .04em .1em'; const i = mk('span', 'c', s, w.text); i.style.display = 'inline-block'; i.style.textShadow = OUT(0.06); if (w === ph.key) i.style.color = PAL.accent2; ph.els[k] = s; return i; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const p = easeExpo((t - w.start + 0.03) / en(0.28)); ph.inn[k].style.transform = `translateY(${t < w.start - 0.03 ? 110 : ((1 - p) * 110).toFixed(2)}%)`; }); },
+  };
+  // L7. flip-card : a dark card flips forward in 3D, then the words light up as spoken
+  S['flip-card'] = {
+    label: '3D 뒤집기 카드', group: { maxChars: portrait ? 12 : 24, maxWords: portrait ? 4 : 7 },
+    build(ph, el) { el.style.perspective = '12em'; const card = mk('div', 'card', el); Object.assign(card.style, { background: 'linear-gradient(160deg,rgba(28,30,48,.92),rgba(10,10,18,.92))', borderRadius: '.22em', padding: '.18em .55em .24em', border: `.04em solid ${PAL.accent}88`, transformOrigin: '50% 0%', boxShadow: '0 .25em .7em rgba(0,0,0,.5)', fontSize: '.92em' }); const ln = mk('div', 'ln', card); ph.card = card; ph.els = ph.words.map((w) => mk('span', 'w', ln, w.text)); },
+    update(ph, t) { const p = clamp((t - ph.vs) / en(0.42)); ph.card.style.transform = `rotateX(${(p < 1 ? 90 * (1 - easeBack(p)) : 0).toFixed(1)}deg)`; ph.words.forEach((w, k) => { ph.els[k].style.color = t >= w.start - 0.02 ? (w === ph.key ? PAL.accent : '#fff') : 'rgba(255,255,255,.4)'; }); },
+  };
+
+  // D1. glitch-split : digital glitch. colour channels split and the word jumps sideways for a moment, then settles
+  S['glitch-split'] = {
+    label: '글리치(디지털 깨짐)', slack: 1.1, group: { maxChars: portrait ? 9 : 18, maxWords: portrait ? 3 : 5 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); if (w === ph.key) s.style.color = PAL.accent; return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], d = t - w.start, vis = d >= -0.02, g = vis && d < en(0.35) ? 1 - Math.max(0, d) / en(0.35) : 0; s.style.opacity = vis ? 1 : 0; s.style.transform = `translateX(${(rnd(k, t, 20) * 0.16 * g).toFixed(3)}em) skewX(${(rnd(k + 9, t, 20) * 18 * g).toFixed(1)}deg)`; const o = (0.04 + 0.06 * g).toFixed(3); s.style.textShadow = `${o}em 0 0 rgba(255,40,90,.85),-${o}em 0 0 rgba(40,220,255,.85),` + OUT(0.05); s.style.clipPath = g > 0.3 && rnd(k + 3, t, 20) > 0.2 ? `inset(${(30 + rnd(k + 4, t, 20) * 40).toFixed(0)}% 0 0 0)` : 'none'; }); },
+  };
+  // D2. script-write : handwriting reveal. each word is written left to right with a pen dot (hand font)
+  S['script-write'] = {
+    label: '손글씨 쓰기', group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = 'CapHand,CapMain,CapBase,sans-serif'; ln.style.fontWeight = 700; ln.style.fontSize = '1.15em'; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.07); s.style.color = w === ph.key ? PAL.accent : '#fff'; const dot = mk('i', 'pen', s); Object.assign(dot.style, { position: 'absolute', top: '58%', width: '.14em', height: '.14em', borderRadius: '50%', background: '#fff', boxShadow: `0 0 .2em ${PAL.accent}` }); s.pen = dot; return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], p = clamp((t - w.start) / Math.max(en(0.2), w.dur * 0.9)); s.style.clipPath = `inset(-20% ${((1 - p) * 100).toFixed(1)}% -20% 0)`; s.style.opacity = p > 0 ? 1 : 0; s.pen.style.left = `calc(${(p * 100).toFixed(1)}% - .14em)`; s.pen.style.opacity = p > 0 && p < 1 ? 1 : 0; }); },
+  };
+  // D3. speech-bubble : comic speech bubble with a tail, dark text, pops from its tail
+  S['speech-bubble'] = {
+    label: '말풍선', slack: 1.25, group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { const card = mk('div', 'card', el); Object.assign(card.style, { background: '#FFFDF6', color: '#16161c', borderRadius: '.7em', padding: '.16em .6em .22em', position: 'relative', fontSize: '.9em', border: '.05em solid #16161c', boxShadow: '.08em .1em 0 #16161c', transformOrigin: '22% 120%' }); const tail = mk('i', 'tail', card); Object.assign(tail.style, { position: 'absolute', left: '16%', bottom: '-.3em', width: '.5em', height: '.5em', background: '#FFFDF6', borderRight: '.05em solid #16161c', borderBottom: '.05em solid #16161c', transform: 'rotate(45deg)' }); const ln = mk('div', 'ln', card); ph.card = card; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); if (w === ph.key) s.style.color = '#E0475B'; return s; }); },
+    update(ph, t) { const p = (t - ph.vs) / en(0.26); ph.card.style.transform = `scale(${(0.3 + 0.7 * easeBack(p)).toFixed(3)})`; ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0.25; }); },
+  };
+  // D4. marker-swipe : a translucent highlighter is dragged across the key word (slightly tilted, uneven ends)
+  S['marker-swipe'] = {
+    label: '형광펜 칠하기', group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 7 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) { s.style.isolation = 'isolate'; const m = mk('i', 'mk', s); Object.assign(m.style, { position: 'absolute', left: '-.12em', right: '-.12em', top: '.42em', bottom: '.02em', background: `${PAL.accent}b0`, borderRadius: '.25em .08em .3em .1em', transform: 'rotate(-2deg) scaleX(0)', transformOrigin: 'left center', zIndex: -1 }); s.mk = m; } return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k]; s.style.opacity = t >= w.start - 0.03 ? 1 : 0.6; if (s.mk) s.mk.style.transform = `rotate(-2deg) scaleX(${easeOut((t - w.start) / en(0.32)).toFixed(3)})`; }); },
+  };
+  // D5. bounce-word : each word drops in and bounces before resting
+  S['bounce-word'] = {
+    label: '통통 튀는 단어', slack: 1.05, group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el, mix) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.055); if (w === ph.key) s.style.color = keyColor(ph, mix); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], d = (t - w.start) / SPD, vis = d >= -0.02; const y = vis ? -0.6 * Math.exp(-Math.max(0, d) * 6) * Math.abs(Math.cos(Math.max(0, d) * 13)) : -0.6; s.style.opacity = vis ? 1 : 0; s.style.transform = `translateY(${y.toFixed(3)}em)`; }); },
+  };
+  // D6. wobble-outline : a second outline wobbles around the letters (playful titles)
+  S['wobble-outline'] = {
+    label: '흔들 윤곽선', slack: 1.08, group: { maxChars: portrait ? 8 : 16, maxWords: portrait ? 3 : 5 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ln.style.fontSize = '1.2em'; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); Object.assign(s.style, { color: w === ph.key ? PAL.accent : '#fff', webkitTextStroke: '.025em #111', isolation: 'isolate' }); const g = mk('span', 'g', s, w.text); Object.assign(g.style, { position: 'absolute', left: 0, top: 0, color: 'transparent', webkitTextStroke: `.035em ${w === ph.key ? '#fff' : PAL.accent}`, zIndex: -1 }); s.g = g; return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], vis = t >= w.start - 0.02; s.style.opacity = vis ? 1 : 0; const a = t * 9 + k; s.g.style.transform = `translate(${(Math.cos(a) * 0.05).toFixed(3)}em,${(Math.sin(a * 1.3) * 0.05).toFixed(3)}em)`; s.style.transform = `scale(${(vis ? 0.85 + 0.15 * easeBack((t - w.start) / en(0.2)) : 0.85).toFixed(3)})`; }); },
+  };
+  // D7. grad-shift : letters carry a slowly flowing colour gradient (palette colours), lighting up as spoken
+  S['grad-shift'] = {
+    label: '색 흐름 그라데이션', group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ln.style.fontSize = '1.1em'; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); Object.assign(s.style, { backgroundImage: `linear-gradient(100deg,${PAL.accent},#ffffff 35%,${PAL.accent2} 65%,${PAL.accent})`, backgroundSize: '300% 100%', webkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'drop-shadow(0 .03em .02em rgba(0,0,0,.9)) drop-shadow(0 0 .06em rgba(0,0,0,.8))' }); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k]; s.style.backgroundPosition = `${((t * 40 + k * 30) % 300).toFixed(1)}% 0`; s.style.opacity = t >= w.start - 0.03 ? 1 : 0.3; }); },
+  };
+  // D8. chorus-zoom : for song hooks. the whole line slowly zooms toward the viewer with a soft glow
+  S['chorus-zoom'] = {
+    label: '후렴 확대(노래)', slack: 1.15, group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 4 : 6 },
+    build(ph, el, mix) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.wrap = ln; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.05) + `,0 0 .4em ${PAL.accent}66`; if (w === ph.key) s.style.color = keyColor(ph, mix); return s; }); },
+    update(ph, t) { const p = clamp((t - ph.vs) / Math.max(0.5, ph.ve - ph.vs)); ph.wrap.style.transform = `scale(${(0.92 + 0.2 * p).toFixed(4)})`; ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0.45; }); },
+  };
+  // D9. ink-seal : a red square seal is pressed onto the key word (blur -> sharp, slight squash)
+  S['ink-seal'] = {
+    label: '도장 꾹', slack: 1.2, group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { buildRows(ph, el, '0.7em', (ks) => Object.assign(ks.style, { fontFamily: DISP, fontWeight: 400, fontSize: '1.4em', color: '#E5372B', border: '.08em solid #E5372B', borderRadius: '.14em', padding: '0 .2em .04em', background: 'rgba(255,250,240,.92)', boxShadow: '0 .05em .15em rgba(0,0,0,.4)' })); },
+    update(ph, t) { ph.words.forEach((w) => { const s = ph.els[w.i], vis = t >= w.start - 0.01, p = clamp((t - w.start) / en(0.2)); if (w === ph.key) { const sc = vis ? 1.6 - 0.6 * easeOut(p) : 1.6; s.style.opacity = vis ? 1 : 0; s.style.filter = `blur(${((1 - p) * 0.06).toFixed(3)}em)`; s.style.transform = `rotate(-6deg) scale(${sc.toFixed(3)},${(sc - 0.06 * Math.sin(Math.PI * p)).toFixed(3)})`; } else smallEnter(s, (t - w.start) / en(0.16), vis); }); },
+  };
+
   // ---------- mix: one style per phrase ----------
-  const MIX_BASE = ['block-sweep', 'line-rise', 'chip-label', 'lead-big', 'underline-ink', 'stack-kinetic', 'karaoke-fill'];
+  const MIX_BASE = ['block-sweep', 'line-rise', 'chip-label', 'lead-big', 'underline-ink', 'stack-kinetic', 'karaoke-fill', 'mask-slide', 'marker-swipe', 'rise-lines'];
   const MIX_KEY = ['hero-key', 'stamp', 'lead-big'];
+  // emotion / sound words -> emotion motion (at most D.fxMax per video, default 4, at least 3 s apart; --fx off turns it off)
+  const FX = [
+    ['boom-shake', /쾅|펑|충격|반전|미쳤|절대|최악|폭발/],
+    ['jolt-pop', /깜짝|헉|대박|놀라|세상에|어머/],
+    ['heart-thump', /설레|두근|심쿵|사랑|반했|좋아해/],
+    ['jitter-nerve', /덜덜|무서|긴장|떨려|급해|큰일|위험|어떡/],
+    ['droop-sigh', /아쉽|실망|시무룩|슬퍼|슬프|망했|우울|힘들|피곤/],
+    ['tilt-wonder', /궁금|갸웃|왜\?|뭐지|이상하|정말\?|진짜\?/],
+    ['sway-breeze', /살랑|여유|편안|느긋|기분 ?좋|행복|산책|바람/],
+  ];
+  let fxUsed = 0, fxLast = -99;
+  function fxFor(ph) {
+    if (D.fx === 'off' || fxUsed >= (D.fxMax ?? 4) || ph.start - fxLast < 3) return null;
+    const txt = ph.words.map((w) => w.text).join(' ');
+    for (const [sid, re] of FX) if (re.test(txt)) { fxUsed++; fxLast = ph.start; return sid; }
+    return null;
+  }
   function planFor(ph, hist) {
     for (const r of D.plan || []) if (ph.start >= r.from && ph.start < r.to && S[r.style]) return r.style;
+    const fx = fxFor(ph); if (fx) return fx;
     let pool;
-    if (ph.hook && D.hook !== 'off') pool = ['hero-key', 'impact-wide', 'stack-kinetic', 'stamp'];
+    if (ph.hook && D.hook !== 'off') pool = ['hero-key', 'impact-wide', 'stack-kinetic', 'stamp', 'chorus-zoom', 'neon-flicker'];
     else if (ph.words.length <= 2) pool = ['pop-word', 'hero-key'];
-    else if (ph.hasNum) pool = ['hero-key', 'chip-label'];
+    else if (ph.hasNum) pool = ['hero-key', 'chip-label', 'num-box'];
     else if (ph.hasEmph) pool = MIX_KEY;
     else pool = MIX_BASE;
     const recent = hist.slice(-2);
@@ -426,6 +622,7 @@
   const isMix = styleId === 'mix';
   if (!isMix && !S[styleId]) throw new Error('unknown style ' + styleId + ' / ' + Object.keys(S).join(','));
   const phrases = group(isMix ? { maxChars: portrait ? 12 : 24, maxWords: portrait ? 4 : 7 } : S[styleId].group);
+  { const v = phrases.map((p) => p.ve - p.vs).sort((a, b) => a - b); const med = v.length ? v[v.length >> 1] : 1.5; SPD = D.speed ? +D.speed : D.fast === 'off' ? 1 : clamp(med / 1.4, 0.55, 1); window.speedFactor = SPD; }
   // hook / chorus detection: a phrase whose text appears 2+ times (repeated chorus lines) is a hook -> bigger, centred, punchier styles (D.hook = 'off' turns this off)
   // (counted as a piece of the whole text, so a chorus line still counts when it was split into phrases differently the second time)
   { const all = words.map((w) => strip(w.text)).join('').toLowerCase(); const count = (s) => { let n = 0, i = -1; while ((i = all.indexOf(s, i + s.length)) >= 0) n++; return n; }; phrases.forEach((ph) => { ph.hk = ph.words.map((w) => strip(w.text)).join('').toLowerCase(); ph.hook = D.hook !== 'off' && ph.hk.length >= 6 && count(ph.hk) >= 2; }); }

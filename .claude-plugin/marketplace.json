@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Give it a video: word-level captions in 10+ styles plus auto-mix, shown as a style sheet first. Captions move left/right/top/bottom inside platform-safe areas, avoid faces, keep a minimum size, pulse on the beat, and render in parallel.",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {

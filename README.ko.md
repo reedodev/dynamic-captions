@@ -90,7 +90,8 @@ cp -r dynamic-captions/skills/dynamic-captions ~/.claude/skills/
 
 ```bash
 node skills/dynamic-captions/scripts/start.mjs my.mp4 --lang ko --out job
-```n
+```
+
 job/preview/overview.png 가 만들어지면 멈춥니다. 그림을 열어 스타일을 고른 뒤, 마지막에 나온 명령(ender.mjs final ...)을 실행하세요. 붙일 수 있는 옵션: `--script 가사.txt`(가사로 철자 고치기), `--faces`(얼굴 피하기), `--beat`(박자에 맞춰 살짝 움직이기), `--model small`(빠르게).
 
 ### 방법 3: 모든 단계를 직접 입력하기
@@ -175,7 +176,38 @@ node $S/make-captions.mjs ... --font "C:\fonts\MyFont.ttf"     # 내 글꼴 파�
 | `news-bar` | 뉴스처럼 어두운 띠 |
 | `typewriter` | 글자가 한 자씩 나타나고 커서가 깜빡임 |
 | `wave` | 말하는 단어의 글자들이 물결처럼 출렁임 |
+| `sway-breeze` | 글자가 나뭇잎처럼 살랑살랑 흔들림 |
+| `jitter-nerve` | 글자가 덜덜 떨림 |
+| `heart-thump` | 핵심어가 심장처럼 두 번씩 쿵쿵, 분홍색 |
+| `tilt-wonder` | 문장이 고개를 갸웃 기울이고 물음표가 붙음 |
+| `jolt-pop` | 단어가 크게 톡 튀어나왔다 자리 잡음 |
+| `droop-sigh` | 글자가 아래로 처지며 회색빛으로 흐려짐 |
+| `boom-shake` | 노란 큰 글자가 쾅 박히며 화면이 흔들림 |
+| `neon-flicker` | 형광등처럼 깜빡깜빡 켜진 뒤 고정 |
+| `duo-tight` | 위는 작은 줄, 아래는 큰 줄, 줄 사이가 좁음 |
+| `rise-lines` | 두세 단어 줄이 가림막 뒤에서 한 줄씩 올라옴(line-rise와 비슷, 줄 단위) |
+| `num-box` | 숫자·핵심어에 테두리 상자가 그려짐 |
+| `chip-pop` | 핵심어가 가운데 맞춘 알약 칩에서 톡 튀어나옴 |
+| `mask-slide` | 단어마다 숨은 칸에서 밀려 올라옴 |
+| `flip-card` | 어두운 카드가 3D로 앞으로 뒤집혀 나옴 |
+| `glitch-split` | 색이 갈라지며 0.35초 흔들린 뒤 멈춤 |
+| `script-write` | 손글씨가 펜 점과 함께 왼쪽부터 써짐 |
+| `speech-bubble` | 꼬리 달린 흰 말풍선이 톡 나옴 |
+| `marker-swipe` | 핵심어에 형광펜이 비스듬히 칠해짐 |
+| `bounce-word` | 단어가 떨어져 통통 튄 뒤 멈춤 |
+| `wobble-outline` | 글자 뒤 두 번째 윤곽선이 빙글빙글 흔들림 |
+| `grad-shift` | 글자 속 색이 천천히 흐름 |
+| `chorus-zoom` | 한 줄 전체가 천천히 다가오며 빛남 |
+| `ink-seal` | 빨간 네모 도장이 핵심어에 꾹 찍힘 |
 | `mix` | 문장마다 다른 모양을 골라 줌 (처음이라면 이것부터) |
+
+### 새 스타일 23개 (1.1.0)
+
+같은 합성 장면에 새 스타일을 하나씩 입힌 비교 그림입니다(시험 영상의 3.7초 장면).
+
+<p align="center"><img src="docs/new-styles-portrait.jpg" alt="새 스타일 23개 세로 비교" width="420"> <img src="docs/new-styles-landscape.jpg" alt="새 스타일 23개 가로 비교" width="420"></p>
+
+감정·의성어 효과(살랑·덜덜·두근·갸웃·깜짝·시무룩·쾅)는 한 영상에 2~4번만 쓰세요. `mix`는 감정 단어가 나오면 알아서 붙이고 최대 4번에서 멈춥니다(`--fx-max`, 끄기 `--fx off`).
 
 ## 말로 바꾸기
 
@@ -193,6 +225,9 @@ node $S/make-captions.mjs ... --font "C:\fonts\MyFont.ttf"     # 내 글꼴 파�
 | "빨리 만들어 줘" | `--workers 4 --encoder auto` |
 | "투명 자막 파일도 줘" | `--alpha` |
 | "문장마다 모양은 내가 정할게" | `--plan plan.json` |
+| "감정 효과는 빼 줘" / "2번만" | `--fx off` / `--fx-max 2` |
+| "두 줄 자막 줄 사이 좁게" | `--style duo-tight --line-ratio 0.4 --line-gap 4` |
+| "컷이 빨라서 자막이 굼떠 보여" | 자동으로 빨라짐, 더 빠르게 `--speed 0.6` |
 
 ## 문제가 생겼나요?
 
@@ -219,6 +254,10 @@ node $S/make-captions.mjs ... --font "C:\fonts\MyFont.ttf"     # 내 글꼴 파�
 - 랩·노래의 단어 시간은 Whisper 기반이라 거칩니다(단어 하나를 최대 1.8초로 제한). 한국어 강제 정렬은 아직 없습니다.
 - 사람 정면 얼굴만 찾습니다. 만화·동물·뒷모습은 놓칠 수 있고, 손·제품·몸은 피하지 않습니다.
 - 시청자가 어떤 스타일을 좋아할지는 검증하지 않았습니다. 시안을 보고 직접 고르세요.
+
+## 바뀐 기록
+
+[CHANGELOG.md](CHANGELOG.md)
 
 ## 시험
 

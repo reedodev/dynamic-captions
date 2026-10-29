@@ -56,7 +56,7 @@ r = run(node, [path.join(S, 'render.mjs'), 'preview', job, '--at', '0.6,1.7,2.7'
 const out = (r.stdout || '') + (r.stderr || '');
 ok(r.status === 0 && fs.existsSync(path.join(job, 'preview', 'overview.png')), 'preview makes overview.png');
 const styleLines = out.split('\n').filter((l) => /\(.+\):/.test(l) && /구역/.test(l));
-ok(styleLines.length >= 20, `preview covers ${styleLines.length} styles (19 + plain + mix expected)`);
+ok(styleLines.length >= 44, `preview covers ${styleLines.length} styles (42 + plain + mix expected)`);
 { const fjob = path.join(work, 'job-font'); let fr = run(node, [path.join(S, 'make-captions.mjs'), '--video', vid, '--words', path.join(work, 'aligned.json'), '--out', fjob, '--font', 'myeongjo', '--font-key', 'black-han']); ok(fr.status === 0 && /CapMain;src:url\(fonts\/NanumMyeongjo/.test(fs.readFileSync(path.join(fjob, 'captions.html'), 'utf8')), '--font myeongjo is written into the job'); fr = run(node, [path.join(S, 'make-captions.mjs'), '--video', vid, '--words', path.join(work, 'aligned.json'), '--out', path.join(work, 'job-badfont'), '--font', 'no-such-font']); ok(fr.status === 2, 'an unknown --font stops with a clear message'); }
 ok(!/구역 경고/.test(out), 'no style leaves its safe spot');
 ok(!/작은 자막 [1-9]/.test(out.replace(/작음 /g, '작은 자막 ')) || true, 'size report printed');
