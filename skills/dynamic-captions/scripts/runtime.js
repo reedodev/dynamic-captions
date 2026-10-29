@@ -710,6 +710,70 @@
     update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], p = easeOut((t - w.start) / en(0.3)), n = Math.round(6 * p); const sh = []; for (let i = 1; i <= 6; i++) sh.push(`${(i * 0.018 * (i <= n ? 1 : 0)).toFixed(3)}em ${(i * 0.018 * (i <= n ? 1 : 0)).toFixed(3)}em 0 ${i === 6 ? '#111' : PAL.accent2}`); s.style.textShadow = sh.join(',') + ',0 0 .02em #111'; s.style.opacity = t >= w.start - 0.03 ? 1 : 0; s.style.transform = `translate(${(-0.05 * p).toFixed(3)}em,${(-0.05 * p).toFixed(3)}em)`; }); },
   };
 
+
+  // ======== v1.2 batch C (2026-10-30): info / numbers / quiz ========
+  // C1. count-up : digits in a word count up from 0 to the spoken value; the final text is exactly the original
+  const countText = (txt, p) => { if (p >= 1) return txt; return txt.replace(/\d[\d,]*(\.\d+)?/g, (m) => { const v = parseFloat(m.replace(/,/g, '')); if (!isFinite(v)) return m; const dec = (m.split('.')[1] || '').length; const n = (v * easeOut(p)).toFixed(dec); return m.includes(',') ? Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : n; }); };
+  S['count-up'] = {
+    label: '숫자 카운트업', slack: 1.05, group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (/\d/.test(w.text)) { Object.assign(s.style, { color: PAL.accent, fontFamily: DISP, fontWeight: 400, fontVariantNumeric: 'tabular-nums', fontSize: '1.25em' }); s.num = true; } else if (w === ph.key) s.style.color = PAL.accent; return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k]; s.style.opacity = t >= w.start - 0.03 ? 1 : 0.35; if (s.num) s.textContent = t < w.start ? countText(w.text, 0) : countText(w.text, (t - w.start) / Math.max(0.35, w.dur)); }); },
+  };
+  // C2. check-list : a check box ticks in front of the line when it starts (to-do, tips)
+  S['check-list'] = {
+    label: '체크 표시', group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 7 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.alignItems = 'center'; const box = mk('span', 'card', ln); Object.assign(box.style, { display: 'inline-block', width: '.78em', height: '.78em', border: '.08em solid #fff', borderRadius: '.16em', position: 'relative', boxShadow: '0 .04em .1em rgba(0,0,0,.6)', background: 'rgba(0,0,0,.25)' }); const tick = mk('i', 'tick', box); Object.assign(tick.style, { position: 'absolute', left: '.2em', top: '-.08em', width: '.3em', height: '.6em', borderRight: `.12em solid ${PAL.accent}`, borderBottom: `.12em solid ${PAL.accent}`, transform: 'rotate(40deg)', transformOrigin: 'left bottom', clipPath: 'inset(100% 0 0 0)' }); ph.tick = tick; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) s.style.color = PAL.accent; return s; }); },
+    update(ph, t) { ph.tick.style.clipPath = `inset(${((1 - easeOut((t - ph.start) / en(0.3))) * 100).toFixed(1)}% 0 0 0)`; ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0.4; }); },
+  };
+  // C3. quiz-card : quiz panel with a round question badge; the key word is hidden by a bar until it is said
+  S['quiz-card'] = {
+    label: '퀴즈 카드', group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { const card = mk('div', 'card', el); Object.assign(card.style, { background: '#ffffff', color: '#14141c', borderRadius: '.3em', padding: '.18em .55em .22em 1.5em', position: 'relative', fontSize: '.88em', boxShadow: `0 .12em 0 ${PAL.accent2},0 .2em .6em rgba(0,0,0,.4)` }); const b = mk('i', 'badge', card, '?'); Object.assign(b.style, { position: 'absolute', left: '.3em', top: '50%', width: '.95em', height: '.95em', marginTop: '-.475em', borderRadius: '50%', background: PAL.accent2, color: '#fff', fontStyle: 'normal', fontFamily: DISP, fontSize: '.95em', lineHeight: '.98em', textAlign: 'center' }); const ln = mk('div', 'ln', card); ph.card = card; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); if (w === ph.key) { s.style.isolation = 'isolate'; const cover = mk('i', 'cv', s); Object.assign(cover.style, { position: 'absolute', inset: '.08em -.06em .02em', background: '#14141c', borderRadius: '.12em', transformOrigin: 'right center' }); s.cv = cover; s.style.color = '#D6336C'; } return s; }); },
+    update(ph, t) { ph.card.style.transform = `translateY(${((1 - easeOut((t - ph.vs) / en(0.22))) * 0.4).toFixed(3)}em)`; ph.words.forEach((w, k) => { const s = ph.els[k]; s.style.opacity = t >= w.start - 0.03 || s.cv ? 1 : 0.35; if (s.cv) s.cv.style.transform = `scaleX(${(1 - easeOut((t - w.start) / en(0.25))).toFixed(3)})`; }); },
+  };
+  // C4. progress-bar : a thin bar under the line fills while the line is spoken
+  S['progress-bar'] = {
+    label: '진행 막대', group: { maxChars: portrait ? 12 : 24, maxWords: portrait ? 4 : 7 },
+    build(ph, el) { const col = mk('div', 'col', el); col.style.rowGap = '.14em'; const ln = mk('div', 'ln', col); ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) s.style.color = PAL.accent; return s; }); const track = mk('div', 'card', col); Object.assign(track.style, { width: '100%', height: '.13em', background: 'rgba(255,255,255,.28)', borderRadius: '.1em', overflow: 'hidden' }); const fill = mk('i', 'fill', track); Object.assign(fill.style, { display: 'block', height: '100%', width: '100%', background: `linear-gradient(90deg,${PAL.accent},${PAL.accent2})`, transformOrigin: 'left center' }); ph.fill = fill; },
+    update(ph, t) { ph.fill.style.transform = `scaleX(${clamp((t - ph.start) / Math.max(0.3, ph.end - ph.start)).toFixed(3)})`; ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0.4; }); },
+  };
+  // C5. bullet-point : a round bullet pops, then the line slides in beside it (lists, steps)
+  S['bullet-point'] = {
+    label: '글머리표 줄', group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 7 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.alignItems = 'center'; const dot = mk('span', 'card', ln); Object.assign(dot.style, { display: 'inline-block', width: '.42em', height: '.42em', borderRadius: '50%', background: PAL.accent, boxShadow: `0 0 0 .08em rgba(0,0,0,.5)` }); ph.dot = dot; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) s.style.color = PAL.accent; return s; }); },
+    update(ph, t) { ph.dot.style.transform = `scale(${easeBack((t - ph.vs) / en(0.2)).toFixed(3)})`; ph.words.forEach((w, k) => { const s = ph.els[k], p = easeOut((t - w.start + 0.03) / en(0.2)); s.style.opacity = t >= w.start - 0.03 ? clamp(p * 2) : 0; s.style.transform = `translateX(${((1 - p) * -0.35).toFixed(3)}em)`; }); },
+  };
+  // C6. arrow-point : an arrow bobs in from the left and points at the key word
+  S['arrow-point'] = {
+    label: '화살표 가리키기', slack: 1.05, group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) { s.style.color = PAL.accent; const a = mk('i', 'arr', s); s.style.paddingLeft = '.6em'; Object.assign(a.style, { position: 'absolute', left: '0', top: '50%', marginTop: '-.24em', width: 0, height: 0, borderTop: '.24em solid transparent', borderBottom: '.24em solid transparent', borderLeft: `.4em solid ${PAL.accent2}`, filter: 'drop-shadow(0 .03em .02em rgba(0,0,0,.8))' }); s.arr = a; } return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k]; s.style.opacity = t >= w.start - 0.03 ? 1 : 0.45; if (s.arr) { const p = easeBack((t - w.start + 0.1) / en(0.25)); s.arr.style.opacity = t >= w.start - 0.1 ? 1 : 0; s.arr.style.transform = `translateX(${((1 - clamp(p)) * -0.3 + Math.sin(t * 9) * 0.05).toFixed(3)}em)`; } }); },
+  };
+  // C7. bracket-focus : corner brackets close in around the key word like a camera focus frame
+  S['bracket-focus'] = {
+    label: '초점 괄호', slack: 1.1, group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) { s.style.color = PAL.accent; s.style.padding = '0 .12em'; s.br = ['lt', 'rt', 'lb', 'rb'].map((c) => { const b = mk('i', 'br', s); const L = c[0] === 'l', T = c[1] === 't'; Object.assign(b.style, { position: 'absolute', width: '.3em', height: '.3em', [L ? 'left' : 'right']: '-.08em', [T ? 'top' : 'bottom']: '-.02em', [L ? 'borderLeft' : 'borderRight']: '.07em solid #fff', [T ? 'borderTop' : 'borderBottom']: '.07em solid #fff', filter: 'drop-shadow(0 0 .03em rgba(0,0,0,.9))' }); b.dx = L ? -1 : 1; b.dy = T ? -1 : 1; return b; }); } return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k]; s.style.opacity = t >= w.start - 0.03 ? 1 : 0.45; if (s.br) { const p = easeOut((t - w.start + 0.05) / en(0.3)); s.br.forEach((b) => { b.style.opacity = t >= w.start - 0.05 ? 1 : 0; b.style.transform = `translate(${(b.dx * (1 - p) * 0.25).toFixed(3)}em,${(b.dy * (1 - p) * 0.25).toFixed(3)}em)`; }); } }); },
+  };
+  // C8. price-tag : the key word (a price) hangs on a tag with a punched hole
+  S['price-tag'] = {
+    label: '가격표', slack: 1.15, group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { buildRows(ph, el, '0.7em', (ks) => { Object.assign(ks.style, { fontFamily: DISP, fontWeight: 400, fontSize: '1.35em', color: '#111', background: PAL.accent, padding: '.06em .35em .1em .9em', clipPath: 'polygon(.45em 0,100% 0,100% 100%,.45em 100%,0 50%)', transformOrigin: '.2em 50%' }); const hole = mk('i', 'hole', ks); Object.assign(hole.style, { position: 'absolute', left: '.36em', top: '50%', width: '.2em', height: '.2em', marginTop: '-.1em', borderRadius: '50%', background: 'rgba(20,20,28,.85)' }); }); },
+    update(ph, t) { ph.words.forEach((w) => { const s = ph.els[w.i], vis = t >= w.start - 0.01, p = (t - w.start) / en(0.4); if (w === ph.key) { const d = Math.max(0, t - w.start) / SPD; s.style.opacity = vis ? 1 : 0; s.style.transform = `rotate(${(vis ? -10 * Math.exp(-d * 5) * Math.cos(d * 12) : -10).toFixed(2)}deg)`; } else smallEnter(s, p, vis); }); },
+  };
+  // C9. search-bar : the line is typed into a search box with a magnifier icon
+  S['search-bar'] = {
+    label: '검색창 입력', group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el) { const card = mk('div', 'card', el); Object.assign(card.style, { background: '#fff', color: '#202124', borderRadius: '1em', padding: '.16em .7em .2em 1.45em', position: 'relative', fontSize: '.84em', boxShadow: '0 .1em .45em rgba(0,0,0,.45)', minWidth: '5em', textAlign: 'left' }); const lens = mk('i', 'lens', card); Object.assign(lens.style, { position: 'absolute', left: '.45em', top: '50%', width: '.42em', height: '.42em', marginTop: '-.3em', border: '.08em solid #5f6368', borderRadius: '50%' }); const handle = mk('i', 'h', lens); Object.assign(handle.style, { position: 'absolute', right: '-.2em', bottom: '-.16em', width: '.22em', height: '.08em', background: '#5f6368', transform: 'rotate(45deg)' }); const ln = mk('div', 'ln', card); ln.style.justifyContent = 'flex-start'; ph.card = card; ph.chars = []; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, ''); if (w === ph.key) s.style.color = '#1a73e8'; ph.chars.push(letters(w, s)); return s; }); const caret = mk('i', 'caret', ln); Object.assign(caret.style, { display: 'inline-block', width: '.06em', height: '.85em', background: '#1a73e8', alignSelf: 'center' }); ph.caret = caret; },
+    update(ph, t) { ph.words.forEach((w, k) => { const cs = ph.chars[k], p = clamp((t - w.start) / Math.max(0.15, w.dur * 0.75)); cs.forEach((c, i) => { c.style.display = p * cs.length > i ? 'inline-block' : 'none'; }); ph.els[k].style.display = t >= w.start ? 'inline-block' : 'none'; }); ph.caret.style.opacity = Math.floor(t * 3) % 2 ? 0.15 : 1; },
+  };
+  // C10. percent-ring : a ring gauge fills next to the number / key word (stats, progress)
+  S['percent-ring'] = {
+    label: '원형 게이지', slack: 1.05, group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.alignItems = 'center'; const ring = mk('span', 'card', ln); Object.assign(ring.style, { display: 'inline-block', width: '1em', height: '1em', borderRadius: '50%', boxShadow: '0 0 .1em rgba(0,0,0,.6)' }); ph.ring = ring; const m = ph.key.text.match(/(\d+(?:\.\d+)?)\s*%/); ph.goal = m ? clamp(+m[1] / 100) : 1; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) s.style.color = PAL.accent; return s; }); },
+    update(ph, t) { const p = ph.goal * easeOut((t - ph.key.start + 0.1) / en(0.6)); const deg = (p * 360).toFixed(1); ph.ring.style.background = `radial-gradient(circle,rgba(10,10,16,.85) 52%,transparent 54%),conic-gradient(${PAL.accent} ${deg}deg,rgba(255,255,255,.25) ${deg}deg)`; ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0.4; }); },
+  };
+
   // ---------- mix: one style per phrase ----------
   const MIX_BASE = ['block-sweep', 'line-rise', 'chip-label', 'lead-big', 'underline-ink', 'stack-kinetic', 'karaoke-fill', 'mask-slide', 'marker-swipe', 'rise-lines'];
   const MIX_KEY = ['hero-key', 'stamp', 'lead-big'];
@@ -736,7 +800,7 @@
     let pool;
     if (ph.hook && D.hook !== 'off') pool = ['hero-key', 'impact-wide', 'stack-kinetic', 'stamp', 'chorus-zoom', 'neon-flicker'];
     else if (ph.words.length <= 2) pool = ['pop-word', 'hero-key'];
-    else if (ph.hasNum) pool = ['hero-key', 'chip-label', 'num-box'];
+    else if (ph.hasNum) pool = ['hero-key', 'chip-label', 'num-box', 'count-up'];
     else if (ph.hasEmph) pool = MIX_KEY;
     else pool = MIX_BASE;
     const recent = hist.slice(-2);
