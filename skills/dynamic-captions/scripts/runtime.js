@@ -582,6 +582,69 @@
     update(ph, t) { ph.words.forEach((w) => { const s = ph.els[w.i], vis = t >= w.start - 0.01, p = clamp((t - w.start) / en(0.2)); if (w === ph.key) { const sc = vis ? 1.6 - 0.6 * easeOut(p) : 1.6; s.style.opacity = vis ? 1 : 0; s.style.filter = `blur(${((1 - p) * 0.06).toFixed(3)}em)`; s.style.transform = `rotate(-6deg) scale(${sc.toFixed(3)},${(sc - 0.06 * Math.sin(Math.PI * p)).toFixed(3)})`; } else smallEnter(s, (t - w.start) / en(0.16), vis); }); },
   };
 
+
+  // ======== v1.2 batch A (2026-10-30): lyric / kinetic ========
+  // A1. stagger-center : letters appear from the middle of the word outward (stagger-from-centre idea)
+  S['stagger-center'] = {
+    label: '가운데부터 퍼지기', group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el) { charLine(ph, el, DISP); ph.words.forEach((w, k) => { if (w === ph.key) ph.els[k].style.color = PAL.accent; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const cs = ph.chars[k], mid = (cs.length - 1) / 2; ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0; cs.forEach((c, i) => { const p = easeBack((t - w.start - Math.abs(i - mid) * en(0.05)) / en(0.22)); c.style.opacity = clamp(p * 3); c.style.transform = `scale(${(0.3 + 0.7 * p).toFixed(3)})`; }); }); },
+  };
+  // A2. split-reveal : the word opens from its centre line, top and bottom halves parting like a curtain
+  S['split-reveal'] = {
+    label: '위아래 갈라 열기', group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el, mix) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.055); if (w === ph.key) s.style.color = keyColor(ph, mix); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const p = easeOut((t - w.start + 0.02) / en(0.25)), h = ((1 - p) * 50).toFixed(1); ph.els[k].style.clipPath = `inset(${h}% -10% ${h}% -10%)`; ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0; }); },
+  };
+  // A3. rubber-stretch : the word lands stretched wide, then snaps back like rubber
+  S['rubber-stretch'] = {
+    label: '고무줄 늘이기', slack: 1.15, group: { maxChars: portrait ? 8 : 16, maxWords: portrait ? 2 : 4 },
+    build(ph, el, mix) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.055); if (w === ph.key) s.style.color = keyColor(ph, mix); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], d = (t - w.start) / SPD, vis = d >= -0.02, a = vis ? Math.exp(-Math.max(0, d) * 7) * Math.cos(Math.max(0, d) * 22) : 0; s.style.opacity = vis ? 1 : 0; s.style.transform = `scale(${(1 + 0.12 * a).toFixed(3)},${(1 - 0.12 * a).toFixed(3)})`; }); },
+  };
+  // A4. spin-in : letters spin into place one after another
+  S['spin-in'] = {
+    label: '빙글 들어오기', slack: 1.05, group: { maxChars: portrait ? 9 : 18, maxWords: portrait ? 3 : 5 },
+    build(ph, el) { charLine(ph, el, DISP); ph.words.forEach((w, k) => { if (w === ph.key) ph.els[k].style.color = PAL.accent2; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0; ph.chars[k].forEach((c, i) => { const p = easeOut((t - w.start - i * en(0.04)) / en(0.3)); c.style.opacity = clamp(p * 2); c.style.transform = `rotate(${((1 - p) * -200).toFixed(1)}deg) scale(${(0.4 + 0.6 * p).toFixed(3)})`; }); }); },
+  };
+  // A5. blur-focus : the spoken word comes into focus quickly (0.2 s, never a long blur)
+  S['blur-focus'] = {
+    label: '흐림에서 선명', group: { maxChars: portrait ? 11 : 22, maxWords: portrait ? 4 : 6 },
+    build(ph, el, mix) { const ln = mk('div', 'ln', el); ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) s.style.color = keyColor(ph, mix); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], p = easeOut((t - w.start + 0.02) / en(0.2)); s.style.opacity = t >= w.start - 0.03 ? (0.3 + 0.7 * p).toFixed(3) : 0; s.style.filter = `blur(${((1 - p) * 0.08).toFixed(3)}em)`; s.style.transform = `scale(${(1.08 - 0.08 * p).toFixed(3)})`; }); },
+  };
+  // A6. slot-roll : letters roll up into place like a slot machine reel
+  S['slot-roll'] = {
+    label: '슬롯 굴리기', group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.chars = []; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, ''); s.style.overflow = 'hidden'; s.style.verticalAlign = 'bottom'; s.style.padding = '0 .03em .06em'; if (w === ph.key) s.style.color = PAL.accent; ph.chars.push([...w.text].map((ch) => { const i = mk('span', 'c', s, ch); i.style.display = 'inline-block'; i.style.textShadow = OUT(0.06); return i; })); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { ph.chars[k].forEach((c, i) => { const p = easeBack((t - w.start - i * en(0.035)) / en(0.26)); c.style.transform = `translateY(${t < w.start - 0.03 ? 120 : ((1 - p) * 120).toFixed(1)}%)`; }); }); },
+  };
+  // A7. echo-trail : two fading ghost copies trail behind the word and catch up
+  S['echo-trail'] = {
+    label: '잔상 겹치기', slack: 1.1, group: { maxChars: portrait ? 9 : 18, maxWords: portrait ? 3 : 5 },
+    build(ph, el, mix) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.isolation = 'isolate'; s.style.textShadow = OUT(0.055); if (w === ph.key) s.style.color = keyColor(ph, mix); s.g = [1, 2].map((n) => { const g = mk('span', 'g', s, w.text); Object.assign(g.style, { position: 'absolute', left: 0, top: 0, color: n === 1 ? PAL.accent : PAL.accent2, zIndex: -1, textShadow: 'none' }); return g; }); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], p = easeOut((t - w.start) / en(0.4)); s.style.opacity = t >= w.start - 0.02 ? 1 : 0; s.g.forEach((g, n) => { g.style.transform = `translate(${((1 - p) * -0.18 * (n + 1)).toFixed(3)}em,${((1 - p) * 0.06 * (n + 1)).toFixed(3)}em)`; g.style.opacity = ((1 - p) * (0.7 - n * 0.25)).toFixed(3); }); }); },
+  };
+  // A8. swing-hang : the line hangs from a pin above and swings to rest
+  S['swing-hang'] = {
+    label: '매달려 흔들', slack: 1.1, group: { maxChars: portrait ? 9 : 16, maxWords: portrait ? 3 : 5 },
+    build(ph, el, mix) { const ln = mk('div', 'ln', el); ln.style.transformOrigin = '50% -40%'; ph.wrap = ln; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.06); if (w === ph.key) s.style.color = keyColor(ph, mix); return s; }); },
+    update(ph, t) { const d = Math.max(0, t - ph.vs) / SPD; ph.wrap.style.transform = `rotate(${(9 * Math.exp(-d * 3.2) * Math.cos(d * 9)).toFixed(2)}deg)`; ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0.3; }); },
+  };
+  // A9. drop-letters : letters drop from above one by one and land
+  S['drop-letters'] = {
+    label: '글자 비 내리기', group: { maxChars: portrait ? 9 : 18, maxWords: portrait ? 3 : 5 },
+    build(ph, el) { charLine(ph, el); ph.words.forEach((w, k) => { if (w === ph.key) ph.els[k].style.color = PAL.accent; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { ph.els[k].style.opacity = t >= w.start - 0.03 ? 1 : 0; ph.chars[k].forEach((c, i) => { const p = clamp((t - w.start - i * en(0.04)) / en(0.24)); const y = p < 1 ? -0.7 * (1 - p * p) : 0; c.style.opacity = clamp(p * 3); c.style.transform = `translateY(${y.toFixed(3)}em)`; }); }); },
+  };
+  // A10. skew-slide : words rush in from the right, leaning forward, then stand straight
+  S['skew-slide'] = {
+    label: '기울어 미끄러지기', group: { maxChars: portrait ? 10 : 20, maxWords: portrait ? 3 : 6 },
+    build(ph, el, mix) { const ln = mk('div', 'ln', el); ln.style.fontFamily = DISP; ln.style.fontWeight = 400; ln.style.fontStyle = 'normal'; ph.els = ph.words.map((w) => { const s = mk('span', 'w', ln, w.text); s.style.textShadow = OUT(0.055); if (w === ph.key) s.style.color = keyColor(ph, mix); return s; }); },
+    update(ph, t) { ph.words.forEach((w, k) => { const s = ph.els[k], p = easeExpo((t - w.start + 0.02) / en(0.3)); s.style.opacity = t >= w.start - 0.03 ? clamp(p * 2) : 0; s.style.transform = `translateX(${((1 - p) * 0.8).toFixed(3)}em) skewX(${((1 - p) * -22).toFixed(1)}deg)`; }); },
+  };
+
   // ---------- mix: one style per phrase ----------
   const MIX_BASE = ['block-sweep', 'line-rise', 'chip-label', 'lead-big', 'underline-ink', 'stack-kinetic', 'karaoke-fill', 'mask-slide', 'marker-swipe', 'rise-lines'];
   const MIX_KEY = ['hero-key', 'stamp', 'lead-big'];
