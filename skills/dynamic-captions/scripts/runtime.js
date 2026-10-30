@@ -118,9 +118,9 @@
     update(ph, t) {
       ph.words.forEach((w, k) => {
         const s = ph.els[k], on = t >= w.start && t < w.end + 0.08;
-        const p = easeOut((t - w.start) / 0.11), fade = clamp(1 - (t - (w.end + 0.08)) / 0.18);
+        const p = easeOut((t - w.start) / 0.09), fade = clamp(1 - (t - (w.end + 0.08)) / 0.18);
         s.b.style.transform = `scaleX(${t < w.start ? 0 : p})`; s.b.style.opacity = t < w.end + 0.08 ? 1 : fade;
-        s.style.color = on ? '#0b0b0f' : '#fff'; s.style.textShadow = on ? 'none' : OUT(0.055);
+        const full = on && p >= 0.98; s.style.color = full ? '#0b0b0f' : '#fff'; s.style.textShadow = full ? 'none' : OUT(0.055);
         s.style.opacity = t < w.start ? 0.82 : 1;
         s.style.transform = on ? `scale(${1 + 0.07 * p})` : 'scale(1)';
       });
@@ -780,11 +780,11 @@
   // emotion / sound words -> emotion motion (at most D.fxMax per video, default 4, at least 3 s apart; --fx off turns it off)
   const FX = [
     ['boom-shake', /쾅|펑|충격|반전|미쳤|절대|최악|폭발/],
-    ['jolt-pop', /깜짝|헉|대박|놀라|세상에|어머/],
+    ['jolt-pop', /깜짝|헉|헐|대박|놀라|놀랍|놀랐|세상에|어머|와우|우와|대단/],
     ['heart-thump', /설레|두근|심쿵|사랑|반했|좋아해/],
     ['jitter-nerve', /덜덜|무서|긴장|떨려|급해|큰일|위험|어떡/],
     ['droop-sigh', /아쉽|실망|시무룩|슬퍼|슬프|망했|우울|힘들|피곤/],
-    ['tilt-wonder', /궁금|갸웃|왜\?|뭐지|이상하|정말\?|진짜\?/],
+    ['tilt-wonder', /궁금|갸웃|왜\?|뭐지|이상하|정말\?|진짜\?|일까\?|을까\?|ㄹ까\?|나요\?|인가요\?|어떨까/],
     ['sway-breeze', /살랑|여유|편안|느긋|기분 ?좋|행복|산책|바람/],
   ];
   let fxUsed = 0, fxLast = -99;
@@ -792,6 +792,9 @@
     if (D.fx === 'off' || fxUsed >= (D.fxMax ?? 4) || ph.start - fxLast < 3) return null;
     const txt = ph.words.map((w) => w.text).join(' ');
     for (const [sid, re] of FX) if (re.test(txt)) { fxUsed++; fxLast = ph.start; return sid; }
+    // sentence endings: a short line ending in ! or ?! is a surprise, a short question is a head-tilt (only short lines, so long sentences stay calm)
+    if (ph.words.length <= 3 && /[!]\??$|\?!$/.test(txt)) { fxUsed++; fxLast = ph.start; return 'jolt-pop'; }
+    if (ph.words.length <= 3 && /\?$/.test(txt)) { fxUsed++; fxLast = ph.start; return 'tilt-wonder'; }
     return null;
   }
   function planFor(ph, hist) {
@@ -859,6 +862,8 @@
     'top-center': { l: .06, r: .94, ...ptop(.06), ax: 'c', ay: 's' }, 'upper-left': { l: .05, r: .56, ...ptop(.06), ax: 'l', ay: 's' }, 'upper-right': { l: .44, r: .95, ...ptop(.06), ax: 'r', ay: 's' },
     'mid-left': { l: .05, r: .50, ...ptop(.38), ax: 'l', ay: 'c' }, 'mid-right': { l: .50, r: .95, ...ptop(.38), ax: 'r', ay: 'c' }, 'mid-center': { l: .06, r: .94, ...ptop(.38), ax: 'c', ay: 'c' },
   };
+  // chest spot (portrait): used only when faces are known, as the first place to try when the face covers the usual spots
+  if (portrait) POS['low-center'] = { l: .11, r: .89, t: Math.max(zt, zb - 0.14), b: Math.min(0.70, zb + 0.015), ax: 'c', ay: 'e' };
   const PDEF = portrait ? 'mid-center' : 'bottom-center';
   const PSEQ_ALL = portrait ? ['mid-center', 'upper-left', 'mid-right', 'upper-right', 'mid-left', 'upper-center'] : ['bottom-center', 'upper-left', 'bottom-right', 'upper-right', 'bottom-left', 'mid-right', 'top-center', 'mid-left'];
   const PSEQ = PSEQ_ALL.filter((p) => !(D.posAvoid || []).includes(p));
@@ -887,7 +892,7 @@
   const find = (t) => { let f = null; for (const ph of phrases) { if (t >= ph.vs && t < ph.ve) f = ph; } return f; };
   // faces (D.faces = [{t, boxes:[[x0,y0,x1,y1] as fractions]}] from find-faces.py): a caption must not cover a face. Spots are tried until the text is big enough AND clear of every face seen during the phrase.
   const FACES = D.faces || [];
-  const facesFor = (ph) => FACES.filter((s) => s.t >= ph.vs - 0.5 && s.t <= ph.ve + 0.5).flatMap((s) => s.boxes.map((b) => [Math.max(0, b[0] - 0.03), Math.max(0, b[1] - 0.03), Math.min(1, b[2] + 0.03), Math.min(1, b[3] + 0.03)]));
+  const facesFor = (ph) => FACES.filter((s) => s.t >= ph.vs - 0.5 && s.t <= ph.ve + 0.5).flatMap((s) => s.boxes.map((b) => { const h = b[3] - b[1]; return [Math.max(0, b[0] - 0.03), Math.max(0, b[1] - 0.03 - 0.35 * h), Math.min(1, b[2] + 0.03), Math.min(1, b[3] + 0.03)]; }));
   function faceHit(fb) {
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; box.querySelectorAll('.w, .card').forEach((e) => { const r = e.getBoundingClientRect(); if (r.width) { x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom); } });
     const area = Math.max(1, (x1 - x0) * (y1 - y0)); let hit = 0;
@@ -897,10 +902,10 @@
   function mount(ph) {
     const fb = FACES.length ? facesFor(ph) : []; const avoid = D.posAvoid || [];
     const order = [ph.pos0]; if (WIDEN[ph.pos0]) order.push(WIDEN[ph.pos0]);
-    if (fb.length) for (const p of Object.keys(POS)) if (!order.includes(p)) order.push(p);
+    if (fb.length) { if (POS['low-center'] && !order.includes('low-center')) order.splice(1, 0, 'low-center'); for (const p of Object.keys(POS)) if (!order.includes(p)) order.push(p); }
     const cand = order.filter((p, i) => POS[p] && (i === 0 || !avoid.includes(p)));
     let best = null;
-    for (const p of cand) { ph.pos = p; layout(ph); ph.faceHit = fb.length ? faceHit(fb) : 0; const score = (ph.minPx >= MINPX ? 0 : 1) + ph.faceHit * 10; if (!best || score < best.score) best = { p, score }; if (ph.minPx >= MINPX && ph.faceHit <= 0.02) { best = null; break; } }
+    for (const p of cand) { ph.pos = p; layout(ph); ph.faceHit = fb.length ? faceHit(fb) : 0; const score = (ph.minPx >= MINPX ? 0 : 1) + ph.faceHit * 30; if (!best || score < best.score) best = { p, score }; if (ph.minPx >= MINPX && ph.faceHit <= 0.02) { best = null; break; } }
     if (best && ph.pos !== best.p) { ph.pos = best.p; layout(ph); ph.faceHit = fb.length ? faceHit(fb) : 0; }
     ph.widened = ph.pos !== ph.pos0;
   }

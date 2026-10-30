@@ -1,6 +1,6 @@
 ---
 name: "dynamic-captions"
-description: "영상(말하는 영상, 랩·노래 가사 영상, 쇼츠, 롱폼)을 주면 말과 가사를 단어 단위로 받아 적고, 같은 장면에 40개가 넘는 자막 스타일(감정·의성어 모션 포함)과 문장마다 스타일을 바꾸는 자동 섞기(mix) 시안을 먼저 보여 준 뒤, 고른 스타일로 자막이 박힌 mp4와 투명 자막(.mov)을 만든다. 자막이 왼쪽·오른쪽·위·아래로 돌아가며 나오고, 얼굴을 피하고, 박자에 맞춰 살짝 커지고, 후렴은 크게 나온다. 자막 스타일, 다이나믹 자막, 가사 자막, 자막 효과, 자막 시안, 쇼츠 자막 요청에 사용한다."
+description: "영상(말하는 영상, 랩·노래 가사 영상, 쇼츠, 롱폼)을 주면 말과 가사를 단어 단위로 받아 적고, 같은 장면에 70개가 넘는 자막 스타일(감정·의성어, 가사·키네틱, 예능·뉴스·레트로, 정보·숫자·퀴즈)과 문장마다 스타일을 바꾸는 자동 섞기(mix) 시안을 먼저 보여 준 뒤, 고른 스타일로 자막이 박힌 mp4와 투명 자막(.mov)을 만든다. 자막이 왼쪽·오른쪽·위·아래로 돌아가며 나오고, 얼굴을 피하고, 박자에 맞춰 살짝 커지고, 후렴은 크게 나온다. 자막 스타일, 다이나믹 자막, 가사 자막, 자막 효과, 자막 시안, 쇼츠 자막 요청에 사용한다."
 ---
 
 # dynamic-captions (영상 → 자막 스타일 시안 → 최종 자막 영상)
@@ -39,10 +39,16 @@ JIZURA(노래 가사 타이포)와 GitHub 오픈소스 자막 스킬들의 아�
 | "감정 효과는 빼줘" / "2번만" | `--fx off` / `--fx-max 2` |
 | "두 줄 자막 줄 사이 좁게" | `--style duo-tight --line-ratio 0.4 --line-gap 4` |
 | "컷이 빨라서 자막이 굼떠 보여" | 자동으로 빨라짐. 더 빠르게 `--speed 0.6`, 끄려면 `--fast off` |
+| "유튜브 자막 파일(SRT)도 줘" | `node scripts/export-subs.mjs --job <job>` → srt·vtt·ass(노래방) |
+| "폴더에 있는 영상 전부" | `node scripts/batch.mjs <폴더> --lang ko` |
+| "이 설정 저장해 / 저번 설정으로" | `--save-preset brand.json` / `--preset brand.json` |
+| "효과 움직임을 영상으로 보고 싶어" | start.mjs에 `--sample`, 또는 `node scripts/sample.mjs <job> --styles a,b` |
 | "네온 제목 / 타자기 / 말풍선 / 형광펜으로" | `--style neon-flicker` / `typewriter` / `speech-bubble` / `marker-swipe` |
 
 
 ## 흐름 (영상 하나당 이 순서)
+
+**파이썬 위치**: `start.mjs`는 `PYTHON` 환경변수 → `scripts/local.json`의 `"python"` → `python`/`python3`/`py` 순서로 Whisper가 깔린 파이썬을 찾는다. 못 찾으면 해결법 3가지를 알려 주고 종료 코드 3으로 멈춘다.
 
 **빠른 시작(한 줄)**: `node scripts/start.mjs <영상> --lang ko [--script 가사.txt] [--faces] [--beat --bpm-hint 88] --out job` 가 아래 2~5단계(받아쓰기, 철자 맞추기+청취 클립, 얼굴, 박자, 작업 폴더, 시안)를 한 번에 하고 `overview.png` 에서 멈춘다. 그 뒤 스타일을 골라 `render.mjs final` 만 실행하면 된다. 단계별로 직접 하고 싶을 때만 아래를 따른다.
 
@@ -55,7 +61,7 @@ JIZURA(노래 가사 타이포)와 GitHub 오픈소스 자막 스킬들의 아�
    - **직접 들어 확인할 곳 만들기**: AI는 소리를 못 듣는다. `node scripts/listen-check.mjs --video <영상> --aligned words.aligned.json --out <폴더>`가 가사와 받아쓰기가 다른 곳마다 6초 클립을 잘라 `listen-check.mp4`(+`listen-check.md` 표)로 묶는다. 사용자가 약 1분 들어 보고 어느 단어가 틀렸는지 답하게 한다. 이 확인 전에는 "가사와 소리가 맞다"고 쓰지 않는다.
    - 강조할 단어를 정한다(문장마다 1개 정도, 영상에서 실제 중요한 말만): `--emphasis "단어,단어"` 또는 words.json의 `"emph": true`. 정하지 않으면 숫자, 천천히 말한 단어, 가장 긴 단어 순으로 잡힌다.
 3. **작업 폴더 만들기**: `node scripts/make-captions.mjs --video <영상> --words words.aligned.json --out <작업폴더>/job [옵션]`. 프레임 파일이 길이만큼 쌓이므로 디스크 여유가 있는 곳에 둔다. 임시 프레임 폴더는 `--tmp`, 환경변수 `DYNCAP_TMP`, `scripts/local.json`의 `tmp` 순으로 정하고 없으면 시스템 임시 폴더다. 옵션은 아래 "옵션 모음".
-4. **스타일 시안 먼저**: `node scripts/render.mjs preview <job>` → `job/preview/overview.png`(전 스타일 한 장면 비교), `style-<id>.png`(스타일별 4장면), `mix-plan.json`(자동 섞기가 문장마다 고른 스타일과 자리). 시안은 첫 4장면뿐 아니라 **모든 문장**의 자리·크기·얼굴 겹침을 검사한다. **답변 본문에 overview.png를 붙이고 전체 경로를 적는다.** 사용자가 고른 스타일은 `references/choices.md`(없으면 새로 만든다)에 한 줄 적고 다음 영상의 추천 순서에 반영한다. 사용자가 고르기 전에는 전체 렌더를 하지 않는다. 묻지 않는 자동 실행이면 아래 표에서 추천 1개를 고르고 이유를 한 줄 남긴다.
+4. **스타일 시안 먼저**: `node scripts/render.mjs preview <job>` → `job/preview/overview.png`, `overview-2.png` …(한 장에 세로 16개·가로 12개씩 나눠 담은 전 스타일 비교), `style-<id>.png`(스타일별 4장면), `mix-plan.json`(자동 섞기가 문장마다 고른 스타일과 자리). 시안은 첫 4장면뿐 아니라 **모든 문장**의 자리·크기·얼굴 겹침을 검사한다. **답변 본문에 overview.png를 붙이고 전체 경로를 적는다.** 사용자가 고른 스타일은 `references/choices.md`(없으면 새로 만든다)에 한 줄 적고 다음 영상의 추천 순서에 반영한다. 사용자가 고르기 전에는 전체 렌더를 하지 않는다. 묻지 않는 자동 실행이면 아래 표에서 추천 1개를 고르고 이유를 한 줄 남긴다.
 5. **최종 렌더**: `node scripts/render.mjs final <job> --style <id> [--range 시작,끝] [--alpha] [--encoder auto] [--workers 4]`
    - 긴 영상은 먼저 `--range 0,20` 같은 20초 샘플을 보여 주고 승인 후 전체를 돌린다.
    - `--workers N`(기본 3): N개의 Chrome이 프레임을 나눠 그린다. 75초 1080p에서 1개 197초 → 4개 64초(약 3배). 같은 구간을 1개와 4개로 만들어 비교했을 때 프레임 수가 같고 화면은 거의 같았다(PSNR 55.7dB). `--workers 1`이 옛 방식이다.
@@ -80,6 +86,8 @@ JIZURA(노래 가사 타이포)와 GitHub 오픈소스 자막 스킬들의 아�
 | `--hook off` | 후렴(반복되는 줄) 자동 감지를 끔 |
 | `--fx off` `--fx-max 4` | mix에서 감정·의성어 단어(좋아·여유 / 급해·무서 / 설레·두근 / 궁금·왜? / 깜짝·헉 / 아쉽·실망 / 쾅·충격)에 감정 모션을 자동으로 붙임. 기본 켜짐, 한 영상 최대 4번, 3초 이상 간격(과하지 않게 2~4번 권장) |
 | `--line-ratio 0.45` `--line-gap 6` | duo-tight 두 줄 자막: 작은 줄 크기(큰 줄의 배율, 너무 작으면 최소 글씨 크기를 지키려 0.49배 아래로는 안 내려감), 줄 사이(px, 1080 기준) |
+| `--preset brand.json` `--save-preset brand.json` | 모양 옵션(색·크기·그림자·자리·글꼴·장식·감정 효과·행간·속도)을 파일로 저장하고 불러옴. 명령에 직접 쓴 옵션이 우선 |
+| `--merge-numbers off` | 받아쓰기가 "39" + ",000원"처럼 쪼갠 숫자를 합치는 기능(기본 켜짐)을 끔 |
 | `--fast off` `--speed 0.7` | 자막이 빨리 바뀌는 영상(빠른 컷·빠른 말)은 새 스타일의 등장 시간이 자동으로 최대 45% 짧아짐. `--speed`로 직접 정함(1=보통) |
 | `--plan plan.json` | mix에서 구간별 스타일 고정: `[{"from":0,"to":8,"style":"hero-key"}]` |
 | `--deco emoji,line` | 이모지 / 자막 밑 강조선. **기본 끔**(아래 "선택 장식") |
@@ -93,6 +101,8 @@ JIZURA(노래 가사 타이포)와 GitHub 오픈소스 자막 스킬들의 아�
 - **글씨 크기 보장**: 가장 작은 글자가 1080p 가로에서 40px, 1080×1920 세로에서 50px보다 작아지면 같은 높이대의 넓은 자리(예: upper-left → top-center)로 옮긴다. 그래도 작으면 `글씨 크기: 작은 자막 N개`로 보고한다. 앞말이 작은 스타일(hero-key, lead-big, stamp)의 앞말은 본문 글자의 0.7~0.78배다.
 
 ## 얼굴 피하기 (`find-faces.py`)
+
+- 1.2.0: 겹친 얼굴 상자(턱·셔츠를 또 얼굴로 잡은 것)는 하나만 남긴다. 얼굴 상자는 이마·머리까지 위로 넓혀서 계산한다. 세로 영상에서 얼굴이 화면 높이의 25%보다 큰 장면이 30% 이상이면 `make-captions`가 "주의(big faces)"를 먼저 알리고, 얼굴 아래 가슴 자리(low-center)를 먼저 시도한다. 큰 얼굴 클로즈업(16:9를 9:16으로 자른 화면)에서는 빈자리가 없어 여전히 겹칠 수 있다(시험 영상에서 4문장 중 2문장이 이마에 남음). 이럴 때는 얼굴이 작은 원본을 쓰거나 `--scale 0.9`, `--pos-plan`으로 자리를 직접 정한다.
 
 1. `python scripts/find-faces.py <영상> --out faces.json` (초당 2번 얼굴을 찾는다. YuNet 모델(MIT, `assets/models`) 우선, 없으면 OpenCV Haar). `faces.preview.png`에 찾은 얼굴 상자가 그려지니 **먼저 열어 본다**.
 2. `make-captions.mjs ... --faces faces.json`. 문장이 나오는 동안(앞뒤 0.5초 포함) 보인 얼굴과 자막 글자 상자가 2% 넘게 겹치면 다른 자리를 차례로 시도한다. `얼굴: 자막이 얼굴을 가리는 묶음 N개` 줄로 결과를 알려 준다.
@@ -117,7 +127,7 @@ JIZURA(노래 가사 타이포)와 GitHub 오픈소스 자막 스킬들의 아�
 
 - 이모지와 밑줄(라인)은 **기본 꺼짐**이다. 사용자가 요청할 때만 `--deco emoji,line`을 준다. 이모지는 기본 목록(한국어·영어 약 45개)에 있는 단어에서만 나온다. 한 글자 키는 단어 맨 앞에서만 맞춘다. 의미가 안 맞는 이모지는 `--emoji-map`으로 덮어쓰고 시안에서 확인한다.
 
-## 스타일 고르는 기준 (42개 + plain + mix)
+## 스타일 고르는 기준 (72개 + plain + mix)
 
 | id | 이름 | 어울리는 곳 | 주의 |
 |---|---|---|---|
@@ -163,6 +173,36 @@ JIZURA(노래 가사 타이포)와 GitHub 오픈소스 자막 스킬들의 아�
 | grad-shift | 색 흐름 그라데이션 | 음악, 제목 | 글자 속 색이 천천히 흐름 |
 | chorus-zoom | 후렴 확대 | 노래 후렴 | 한 줄 전체가 천천히 다가오며 빛남 |
 | ink-seal | 도장 꾹 | 결론·"이것만" | 빨간 네모 도장이 핵심어에 꾹 찍힘 |
+| stagger-center | 가운데부터 퍼지기 | 가사, 쇼츠 | letters spread out from the middle of the word |
+| split-reveal | 위아래 갈라 열기 | 제목, 가사 | the word opens from its centre line like a curtain |
+| rubber-stretch | 고무줄 늘이기 | 밝은 쇼츠 | the word lands stretched and snaps back |
+| spin-in | 빙글 들어오기 | 가사, 제목 | letters spin into place |
+| blur-focus | 흐림에서 선명 | 감성 영상 | the word comes into focus (0.2 s, never a long blur) |
+| slot-roll | 슬롯 굴리기 | 숫자, 이벤트 | letters roll up like a slot machine |
+| echo-trail | 잔상 겹치기 | 음악, 강조 | two coloured ghosts trail behind and catch up |
+| swing-hang | 매달려 흔들 | 가벼운 말 | the line hangs from a pin and swings to rest |
+| drop-letters | 글자 비 내리기 | 가사 | letters drop from above one by one |
+| skew-slide | 기울어 미끄러지기 | 빠른 쇼츠 | words rush in leaning forward, then stand straight |
+| variety-outline | 예능 두꺼운 테두리 | 예능, 리액션 | thick coloured outline, tilted, pops per word |
+| alert-bar | 속보 빨간 띠 | 뉴스, 공지 | red breaking-news band with a blinking dot |
+| vhs-retro | VHS 레트로 | 레트로, 브이로그 | colour fringe, scan lines and a small wobble |
+| comic-burst | 만화 효과음 별 | 효과음, 반응 | the key word in a yellow comic starburst |
+| tape-strip | 마스킹 테이프 | 일상, 다이어리 | each word on a strip of tape |
+| paper-cut | 색종이 오려 붙이기 | 아이·교육, 콜라주 | words on coloured paper pieces |
+| sticker-peel | 스티커 붙이기 | 쇼츠 제목 | thick white sticker outline, slapped on |
+| doodle-circle | 낙서 동그라미 | 설명, 핵심어 | a hand-drawn loop around the key word |
+| pixel-game | 8비트 게임 | 게임 | pixel text appears in steps in a dark box |
+| retro-shadow | 레트로 입체 그림자 | 제목 | long stepped 3D shadow |
+| count-up | 숫자 카운트업 | 가격, 통계 | numbers count up to the spoken value (final text is exact) |
+| check-list | 체크 표시 | 할 일, 팁 | a check box ticks before the line |
+| quiz-card | 퀴즈 카드 | 퀴즈 | the key word is covered until it is said |
+| progress-bar | 진행 막대 | 단계 설명 | a thin bar fills while the line is spoken |
+| bullet-point | 글머리표 줄 | 목록, 단계 | a bullet pops and the line slides in |
+| arrow-point | 화살표 가리키기 | 핵심어 | an arrow points at the key word from the left |
+| bracket-focus | 초점 괄호 | 핵심어 | corner brackets close in like a focus frame |
+| price-tag | 가격표 | 가격 | the key word hangs on a swinging tag |
+| search-bar | 검색창 입력 | 검색어, 사용법 | the line is typed into a search box |
+| percent-ring | 원형 게이지 | 퍼센트, 통계 | a ring gauge fills (to the % if the key word has one) |
 | mix | 자동 섞기 | 말하는 영상 전체 | `mix-plan.json`에서 어색한 문장은 plan으로 고정 |
 
 - **감정·의성어 7종**(sway-breeze, jitter-nerve, heart-thump, tilt-wonder, jolt-pop, droop-sigh, boom-shake)은 한 영상에 2~4번만 쓴다. 자주 쓰면 효과가 사라진다. mix는 이를 자동으로 지킨다(`--fx-max`).
@@ -184,6 +224,10 @@ JIZURA(노래 가사 타이포)와 GitHub 오픈소스 자막 스킬들의 아�
 글씨 크기(최소 허용 px, 작은 자막 수, 자리 옮김 수), 얼굴 가림 수, 읽기 속도(묶음별 자/초, 17 초과 빠름·25 초과 위험은 외국 저장소 기준이라 한글은 참고용), 글꼴에 없는 글자, 자리 이탈 경고, 프레임 수 차이(2 초과 시 경고). 시안을 고른 뒤 영상 파일이 바뀌면 final이 멈춘다(크기·수정 시각 비교).
 
 ## 알려진 한계 (정직하게)
+
+- 새 스타일 30개(1.2.0)는 합성 배경 8초 영상(세로·가로) 시안과, 실제 말하는 영상 2개(합성 음성 18초, AI 영상 8초)의 자동 섞기로 확인했다. 효과마다 실제 영상에서 따로 확인하지는 않았다.
+- 그래픽카드 인코더 자동 선택은 이 PC(NVIDIA)에서만 확인했다. 맥(videotoolbox), 인텔(qsv), AMD(amf)는 시험하지 못했다.
+- `export-subs.mjs`의 ASS는 글꼴 이름이 Pretendard라 그 글꼴이 없는 PC에서는 다른 글꼴로 보인다.
 
 - 새 스타일 23개(1.1.0)는 합성 배경 8초 영상(세로 1080×1920, 가로 1920×1080)의 4장면 시안으로만 확인했다. 실제 인물 영상·긴 영상·노래 영상에서의 어울림은 아직 확인하지 않았다.
 

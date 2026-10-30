@@ -46,3 +46,14 @@
 
 - 새 스타일 23개(감정·의성어 7종, 두 줄 행간, 네온, 줄 올라오기, 숫자 상자, 칩, 글리치, 손글씨, 말풍선, 형광펜 등)는 이 저장소에서 새로 쓴 코드입니다. 다른 프로젝트의 코드를 복사하지 않았습니다. 자주 쓰이는 자막 연출(키네틱 타이포, 예능 자막, 네온 간판, 형광펜 강조)을 개념으로 삼았습니다.
 - 새 글꼴은 추가하지 않았습니다(기존 OFL 글꼴 5종만 사용).
+
+## 1.2.0 새 스타일·기능
+
+- 새 스타일 30개와 기능은 이 저장소에서 새로 쓴 코드입니다. 다른 프로젝트의 코드는 복사하지 않았습니다.
+
+| 참고한 곳 | 라이선스 | 참고한 것 |
+|---|---|---|
+| [anime.js](https://github.com/juliangarnier/anime) | MIT | 글자를 가운데부터 순서대로 움직이는 방식(stagger from center) 개념만 |
+| [Motion Canvas](https://github.com/motion-canvas/motion-canvas) | MIT | 목소리에 맞춰 정보 그래픽을 움직이는 방식 개념만 |
+| [Animate.css](https://github.com/animate-css/animate.css) | Hippocratic 2.1 (MIT 아님) | 효과 이름의 분류만 참고, 코드는 쓰지 않음 |
+| [auto-caption](https://github.com/sebetancurch/auto-caption), [auto-subs](https://github.com/mateusz-kow/Auto-Subs), [Capite](https://github.com/muneebkhan08/Capite)(MIT), [karaoke-subs](https://github.com/DorXmoon/karaoke-subs) | 각 저장소 README | 자막 도구에서 자주 쓰는 기능 목록(SRT·VTT·ASS 노래방 내보내기, 여러 영상 처리, 설정 파일, NVENC 인코딩). 코드는 보지 않고 README의 기능 목록만 참고 |

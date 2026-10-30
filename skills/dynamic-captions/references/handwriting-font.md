@@ -23,7 +23,7 @@
    python scripts/handwriting-font.py --layout 작업폴더\tpl\layout.json --scans 사진1.jpg 사진2.jpg --out my-hand.ttf --name MyHand
    ```
    끝에 JSON으로 '들어간 글자'와 '빠진 글자'가 나옵니다. 빠진 글자는 안 쓴 칸입니다. 다시 써서 그 시트만 다시 찍어도 되지만, 시트 한 장을 다시 돌리면 그 장의 글자가 모두 새로 만들어집니다(여러 장은 모두 한 번에 넣으세요). 문제가 있으면 `--debug-dir 폴더`로 펴 놓은 시트 그림을 확인합니다.
-   - 필요: fontTools, opencv-python, numpy (이 PC의 `E:\AI\python_embeded\python.exe`에 있음).
+   - 필요: fontTools, opencv-python, numpy.
 5. **자막에 쓰기**: 자막 스킬의 `--font my-hand.ttf` 옵션으로 지정합니다. 합성 글꼴(54자)로 시험했을 때 쓴 글자는 손글씨로, 쓰지 않은 글자는 Pretendard로 자동 대체되는 것을 시안 그림으로 확인했습니다(글꼴이 달라 크기·높이가 조금 다르게 보입니다). 예시:
    ```
    node scripts/make-captions.mjs --words words.json --font my-hand.ttf ...

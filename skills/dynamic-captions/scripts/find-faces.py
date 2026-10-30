@@ -39,6 +39,18 @@ if yn is None and hasattr(cv2, "CascadeClassifier"):  # fallback only when the Y
 if yn is None and not casc:
     raise SystemExit("no face detector available: the YuNet model (assets/models) and OpenCV Haar cascades are both missing")
 
+def nms(boxes):
+    # keep the strongest box; drop any box whose overlap covers more than 30% of the smaller one
+    keep = []
+    for b in sorted(boxes, key=lambda b: -b[4]):
+        ok = True
+        for k in keep:
+            ix = max(0, min(b[2], k[2]) - max(b[0], k[0])); iy = max(0, min(b[3], k[3]) - max(b[1], k[1]))
+            small = min((b[2] - b[0]) * (b[3] - b[1]), (k[2] - k[0]) * (k[3] - k[1]))
+            if small > 0 and ix * iy / small > 0.3: ok = False; break
+        if ok: keep.append(b)
+    return [k[:4] for k in keep]
+
 def detect(frame):
     h, w = frame.shape[:2]
     boxes = []
@@ -47,7 +59,8 @@ def detect(frame):
         _, faces = yn.detect(frame)
         for f in (faces if faces is not None else []):
             x, y, bw, bh = f[:4]
-            boxes.append([float(max(0, x / w)), float(max(0, y / h)), float(min(1, (x + bw) / w)), float(min(1, (y + bh) / h))])
+            boxes.append([float(max(0, x / w)), float(max(0, y / h)), float(min(1, (x + bw) / w)), float(min(1, (y + bh) / h)), float(f[14]) if len(f) > 14 else 1.0])
+        boxes = nms(boxes)
     if not boxes:
         g = cv2.equalizeHist(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
         for c in casc:

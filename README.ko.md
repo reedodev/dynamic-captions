@@ -199,6 +199,36 @@ node $S/make-captions.mjs ... --font "C:\fonts\MyFont.ttf"     # 내 글꼴 파�
 | `grad-shift` | 글자 속 색이 천천히 흐름 |
 | `chorus-zoom` | 한 줄 전체가 천천히 다가오며 빛남 |
 | `ink-seal` | 빨간 네모 도장이 핵심어에 꾹 찍힘 |
+| `stagger-center` | 가운데부터 퍼지기: 가사, 쇼츠 |
+| `split-reveal` | 위아래 갈라 열기: 제목, 가사 |
+| `rubber-stretch` | 고무줄 늘이기: 밝은 쇼츠 |
+| `spin-in` | 빙글 들어오기: 가사, 제목 |
+| `blur-focus` | 흐림에서 선명: 감성 영상 |
+| `slot-roll` | 슬롯 굴리기: 숫자, 이벤트 |
+| `echo-trail` | 잔상 겹치기: 음악, 강조 |
+| `swing-hang` | 매달려 흔들: 가벼운 말 |
+| `drop-letters` | 글자 비 내리기: 가사 |
+| `skew-slide` | 기울어 미끄러지기: 빠른 쇼츠 |
+| `variety-outline` | 예능 두꺼운 테두리: 예능, 리액션 |
+| `alert-bar` | 속보 빨간 띠: 뉴스, 공지 |
+| `vhs-retro` | VHS 레트로: 레트로, 브이로그 |
+| `comic-burst` | 만화 효과음 별: 효과음, 반응 |
+| `tape-strip` | 마스킹 테이프: 일상, 다이어리 |
+| `paper-cut` | 색종이 오려 붙이기: 아이·교육, 콜라주 |
+| `sticker-peel` | 스티커 붙이기: 쇼츠 제목 |
+| `doodle-circle` | 낙서 동그라미: 설명, 핵심어 |
+| `pixel-game` | 8비트 게임: 게임 |
+| `retro-shadow` | 레트로 입체 그림자: 제목 |
+| `count-up` | 숫자 카운트업: 가격, 통계 |
+| `check-list` | 체크 표시: 할 일, 팁 |
+| `quiz-card` | 퀴즈 카드: 퀴즈 |
+| `progress-bar` | 진행 막대: 단계 설명 |
+| `bullet-point` | 글머리표 줄: 목록, 단계 |
+| `arrow-point` | 화살표 가리키기: 핵심어 |
+| `bracket-focus` | 초점 괄호: 핵심어 |
+| `price-tag` | 가격표: 가격 |
+| `search-bar` | 검색창 입력: 검색어, 사용법 |
+| `percent-ring` | 원형 게이지: 퍼센트, 통계 |
 | `mix` | 문장마다 다른 모양을 골라 줌 (처음이라면 이것부터) |
 
 ### 새 스타일 23개 (1.1.0)
@@ -208,6 +238,21 @@ node $S/make-captions.mjs ... --font "C:\fonts\MyFont.ttf"     # 내 글꼴 파�
 <p align="center"><img src="docs/new-styles-portrait.jpg" alt="새 스타일 23개 세로 비교" width="420"> <img src="docs/new-styles-landscape.jpg" alt="새 스타일 23개 가로 비교" width="420"></p>
 
 감정·의성어 효과(살랑·덜덜·두근·갸웃·깜짝·시무룩·쾅)는 한 영상에 2~4번만 쓰세요. `mix`는 감정 단어가 나오면 알아서 붙이고 최대 4번에서 멈춥니다(`--fx-max`, 끄기 `--fx off`).
+
+### 새 스타일 30개 (1.2.0)
+
+<p align="center"><img src="docs/v12-portrait.jpg" alt="새 스타일 30개 세로 비교" width="420"> <img src="docs/v12-landscape.jpg" alt="새 스타일 30개 가로 비교" width="420"></p>
+
+### 새 기능 (1.2.0)
+
+- **자막 파일 내보내기:** `node $S/export-subs.mjs --job job` → `captions.srt`·`.vtt`(유튜브 자막 트랙), `.ass`(말하는 단어가 노랗게 바뀌는 노래방 자막)
+- **폴더 통째로:** `node $S/batch.mjs 영상폴더 --lang ko` (영상마다 스타일 시안까지)
+- **설정 저장:** `--save-preset brand.json`, 다음에 `--preset brand.json`
+- **움직이는 샘플:** `start.mjs ... --sample` 이면 감정 효과 7개를 1.8초 클립으로 만들어 줍니다
+- **숫자 조각 합치기:** 받아쓰기가 "39 ,000원"처럼 쪼갠 숫자를 "39,000원"으로
+- **그래픽카드 인코딩 자동:** `--encoder auto` 가 맥 videotoolbox, NVIDIA, 인텔, AMD 순서로 시험해 고릅니다(NVIDIA만 시험함)
+- **파이썬 자동 찾기:** `PYTHON` 환경변수나 `scripts/local.json`의 `"python"` 경로를 읽습니다
+- **시안 나눠 담기:** 스타일이 많아 `overview.png`, `overview-2.png`… 로 나눠 글자가 작아지지 않습니다
 
 ## 말로 바꾸기
 

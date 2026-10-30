@@ -199,6 +199,36 @@ Letters your font does not have are drawn in Pretendard, so you never see empty 
 | `grad-shift` | a colour gradient flows through the letters (music, titles) |
 | `chorus-zoom` | the whole line slowly zooms in with a glow (song choruses) |
 | `ink-seal` | a red seal is pressed onto the key word (conclusions) |
+| `stagger-center` | letters spread out from the middle of the word |
+| `split-reveal` | the word opens from its centre line like a curtain |
+| `rubber-stretch` | the word lands stretched and snaps back |
+| `spin-in` | letters spin into place |
+| `blur-focus` | the word comes into focus (0.2 s, never a long blur) |
+| `slot-roll` | letters roll up like a slot machine |
+| `echo-trail` | two coloured ghosts trail behind and catch up |
+| `swing-hang` | the line hangs from a pin and swings to rest |
+| `drop-letters` | letters drop from above one by one |
+| `skew-slide` | words rush in leaning forward, then stand straight |
+| `variety-outline` | thick coloured outline, tilted, pops per word |
+| `alert-bar` | red breaking-news band with a blinking dot |
+| `vhs-retro` | colour fringe, scan lines and a small wobble |
+| `comic-burst` | the key word in a yellow comic starburst |
+| `tape-strip` | each word on a strip of tape |
+| `paper-cut` | words on coloured paper pieces |
+| `sticker-peel` | thick white sticker outline, slapped on |
+| `doodle-circle` | a hand-drawn loop around the key word |
+| `pixel-game` | pixel text appears in steps in a dark box |
+| `retro-shadow` | long stepped 3D shadow |
+| `count-up` | numbers count up to the spoken value (final text is exact) |
+| `check-list` | a check box ticks before the line |
+| `quiz-card` | the key word is covered until it is said |
+| `progress-bar` | a thin bar fills while the line is spoken |
+| `bullet-point` | a bullet pops and the line slides in |
+| `arrow-point` | an arrow points at the key word from the left |
+| `bracket-focus` | corner brackets close in like a focus frame |
+| `price-tag` | the key word hangs on a swinging tag |
+| `search-bar` | the line is typed into a search box |
+| `percent-ring` | a ring gauge fills (to the % if the key word has one) |
 | `mix` | picks a different look for each sentence (a good first choice) |
 
 ### 23 new styles (1.1.0)
@@ -208,6 +238,21 @@ Each new style on the same synthetic scene (the 3.7 s moment of the test clip).
 <p align="center"><img src="docs/new-styles-portrait.jpg" alt="23 new styles, portrait" width="420"> <img src="docs/new-styles-landscape.jpg" alt="23 new styles, landscape" width="420"></p>
 
 Use the emotion / sound-word motions (sway, tremble, heartbeat, head-tilt, jolt, droop, boom) only 2-4 times per video. `mix` adds them on emotion words by itself and stops at 4 (`--fx-max`, turn off with `--fx off`). Emotion word detection is Korean-only for now.
+
+### 30 new styles (1.2.0)
+
+<p align="center"><img src="docs/v12-portrait.jpg" alt="30 new styles, portrait" width="420"> <img src="docs/v12-landscape.jpg" alt="30 new styles, landscape" width="420"></p>
+
+### New in 1.2.0
+
+- **Subtitle files:** `node $S/export-subs.mjs --job job` writes `captions.srt` / `.vtt` (YouTube caption track) and `.ass` (karaoke: each word lights up as it is said)
+- **Whole folder:** `node $S/batch.mjs videos --lang ko` (style sheet for every video)
+- **Presets:** `--save-preset brand.json`, later `--preset brand.json`
+- **Moving samples:** add `--sample` to start.mjs for 1.8 s clips of the 7 emotion motions
+- **Number pieces joined:** "39" + ",000원" from speech recognition becomes "39,000원"
+- **Hardware encoding:** `--encoder auto` tries Mac videotoolbox, NVIDIA, Intel, AMD (only NVIDIA was tested)
+- **Python found automatically:** `PYTHON` or `"python"` in `scripts/local.json`
+- **Style sheet in pages:** `overview.png`, `overview-2.png` ... so the text stays readable
 
 ## Say it in plain words
 

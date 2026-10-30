@@ -134,9 +134,15 @@ try {
       if (at.length === 1) fs.copyFileSync(tiles[s][0], path.join(dir, `style-${s}.png`)); else ff([...pat, '-filter_complex', `hstack=inputs=${at.length}`, '-frames:v', '1', path.join(dir, `style-${s}.png`)]);
     }
     // overview: the second sample moment of every style
-    const ovi = at.length > 1 ? 1 : 0; const cols = isPortrait ? 4 : 2; const pat = styles.map((s) => ['-i', tiles[s][ovi]]).flat();
-    const lay = styles.map((_, k) => { const cx = k % cols, ry = Math.floor(k / cols); return `${cx ? Array(cx).fill('w0').join('+') : '0'}_${ry ? Array(ry).fill('h0').join('+') : '0'}`; }).join('|');
-    if (styles.length === 1) fs.copyFileSync(tiles[styles[0]][ovi], path.join(dir, 'overview.png')); else ff([...pat, '-filter_complex', `xstack=inputs=${styles.length}:layout=${lay}`, '-frames:v', '1', path.join(dir, 'overview.png')]);
+    // overview pages: at most 16 styles (portrait, 4 columns) or 12 (landscape, 3 columns) per picture, so the text stays big enough to read
+    const ovi = at.length > 1 ? 1 : 0; const cols = isPortrait ? 4 : 3; const per = isPortrait ? 16 : 12; const pages = [];
+    for (let pg = 0; pg * per < styles.length; pg++) {
+      const part = styles.slice(pg * per, (pg + 1) * per); const name = pg === 0 ? 'overview.png' : `overview-${pg + 1}.png`; pages.push(path.join(dir, name));
+      const pat = part.map((s) => ['-i', tiles[s][ovi]]).flat();
+      const lay = part.map((_, k) => { const cx = k % cols, ry = Math.floor(k / cols); return `${cx ? Array(cx).fill('w0').join('+') : '0'}_${ry ? Array(ry).fill('h0').join('+') : '0'}`; }).join('|');
+      if (part.length === 1) fs.copyFileSync(tiles[part[0]][ovi], path.join(dir, name)); else ff([...pat, '-filter_complex', `xstack=inputs=${part.length}:layout=${lay}:fill=black`, '-frames:v', '1', path.join(dir, name)]);
+    }
+    if (pages.length > 1) console.log('overview pages: ' + pages.join(' , '));
     await load('mix'); const mixPlan = await ev('window.mixPlan'); const posPlan = await ev('window.posPlan'); fs.writeFileSync(path.join(dir, 'mix-plan.json'), JSON.stringify(mixPlan.map((m, i) => ({ ...m, pos: posPlan[i] && posPlan[i].pos })), null, 1));
     fs.writeFileSync(path.join(dir, 'qa.json'), JSON.stringify({ at, zone: job.zone, qa, report }, null, 1));
     console.log('preview moments (s):', at.join(', ')); console.log('overview:', path.join(dir, 'overview.png'));

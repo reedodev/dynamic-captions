@@ -17,7 +17,7 @@ const vi = argv.indexOf('--video'); if (vi >= 0 && argv[vi + 1]) { argv.unshift(
 const video = argv[0] && !argv[0].startsWith('--') ? path.resolve(argv[0]) : null;
 if (video && !fs.existsSync(video)) console.error('video not found: ' + video);
 if (!video || !fs.existsSync(video)) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 8).join('\n')); process.exit(video ? 2 : 1); }
-const own = new Set(['lang', 'script', 'faces', 'beat', 'bpm-hint', 'out', 'model', 'tmp']);
+const own = new Set(['lang', 'script', 'faces', 'beat', 'bpm-hint', 'out', 'model', 'tmp', 'sample']);
 const mine = {}, pass = [];
 for (let i = 1; i < argv.length; i++) {
   if (!argv[i].startsWith('--')) continue; const k = argv[i].slice(2); const hasVal = argv[i + 1] != null && !argv[i + 1].startsWith('--');
@@ -28,10 +28,12 @@ const run = (cmd, args, label) => { const r = spawnSync(cmd, args, { encoding: '
 
 // find a Python that has the packages we need (PYTHON env first)
 const can = (py, mod) => spawnSync(py, ['-c', `import ${mod}`], { stdio: 'ignore' }).status === 0;
-const candidates = [process.env.PYTHON, 'python', 'python3', 'py'].filter(Boolean);
+// local.json python: this PC's python can be saved once in scripts/local.json as {"python": "C:/path/python.exe"}
+let localPy = null; try { localPy = JSON.parse(fs.readFileSync(path.join(HERE, 'local.json'), 'utf8')).python || null; } catch {}
+const candidates = [process.env.PYTHON, localPy, 'python', 'python3', 'py'].filter(Boolean);
 const pyFor = (mod) => candidates.find((p) => can(p, mod));
 const pyWhisper = pyFor('whisper');
-if (!pyWhisper) { console.error('Python with openai-whisper was not found. Install it:  pip install openai-whisper numpy   (or set PYTHON=<path to python>)'); process.exit(3); }
+if (!pyWhisper) { console.error('Python with openai-whisper was not found (tried: ' + candidates.join(', ') + ').\nFix one of these:\n  1) install it:  pip install openai-whisper numpy\n  2) point to the python that has it:  PYTHON=<path to python.exe>  (PowerShell: $env:PYTHON="C:\\path\\python.exe")\n  3) save it once in ' + path.join(HERE, 'local.json') + ' as {"python": "C:/path/python.exe"}'); process.exit(3); }
 
 console.log('1/5 transcribing (the first run downloads a speech model, about 1.5 GB; this can take several minutes)...');
 const words = path.join(out, 'words.json');
@@ -51,8 +53,9 @@ if (mine.beat) { const py = pyFor('librosa'); if (!py) console.log('4/5 skipped 
 
 console.log('5/5 making the job folder and the style sheet...');
 const hasScale = pass.includes('--scale'), hasShade = pass.includes('--shade');
-run(process.execPath, [path.join(HERE, 'make-captions.mjs'), '--video', video, '--words', useWords, '--out', out, ...(hasScale ? [] : ['--scale', '1.25']), ...(hasShade ? [] : ['--shade', '0.4']), ...extra, ...pass], 'make-captions');
+{ const mc = run(process.execPath, [path.join(HERE, 'make-captions.mjs'), '--video', video, '--words', useWords, '--out', out, ...(hasScale ? [] : ['--scale', '1.25']), ...(hasShade ? [] : ['--shade', '0.4']), ...extra, ...pass], 'make-captions'); (mc.stdout || '').split('\n').filter((l) => /주의|joined|preset/.test(l)).forEach((l) => console.log(l)); }
 const pv = spawnSync(process.execPath, [path.join(HERE, 'render.mjs'), 'preview', out, ...(mine.tmp ? ['--tmp', path.resolve(String(mine.tmp))] : [])], { encoding: 'utf8' });
 if (pv.status !== 0) { console.error('preview failed:\n' + ((pv.stderr || '') + (pv.stdout || '')).split('\n').slice(-12).join('\n')); process.exit(pv.status || 1); }
-console.log((pv.stdout || '').split('\n').filter((l) => /글씨 크기|얼굴:|읽기 속도/.test(l)).join('\n'));
+console.log((pv.stdout || '').split('\n').filter((l) => /글씨 크기|얼굴:|읽기 속도|overview pages/.test(l)).join('\n'));
+if (mine.sample) { console.log('extra: short moving samples of the emotion motions (--sample)...'); spawnSync(process.execPath, [path.join(HERE, 'sample.mjs'), out, ...(mine.tmp ? ['--tmp', path.resolve(String(mine.tmp))] : []), ...(typeof mine.sample === 'string' ? ['--styles', mine.sample] : [])], { stdio: 'inherit' }); }
 console.log(`\nDone. Open this picture and choose a style:\n  ${path.join(out, 'preview', 'overview.png')}\nThen make the video (a 20-second sample first, drop --range for the whole video):\n  node ${path.join(HERE, 'render.mjs')} final "${out}" --style mix --range 0,20`);
