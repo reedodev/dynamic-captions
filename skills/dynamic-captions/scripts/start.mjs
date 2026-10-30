@@ -12,7 +12,10 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
+// the video can be the first word or --video <file> (a run with only --video used to print the help and stop, which looked like no output)
+const vi = argv.indexOf('--video'); if (vi >= 0 && argv[vi + 1]) { argv.unshift(argv[vi + 1]); argv.splice(vi + 1, 2); }
 const video = argv[0] && !argv[0].startsWith('--') ? path.resolve(argv[0]) : null;
+if (video && !fs.existsSync(video)) console.error('video not found: ' + video);
 if (!video || !fs.existsSync(video)) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 8).join('\n')); process.exit(video ? 2 : 1); }
 const own = new Set(['lang', 'script', 'faces', 'beat', 'bpm-hint', 'out', 'model', 'tmp']);
 const mine = {}, pass = [];

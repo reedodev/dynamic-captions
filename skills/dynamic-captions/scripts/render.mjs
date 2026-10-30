@@ -21,13 +21,17 @@ const JOB = path.resolve(jobArg); if (mode !== 'frames') fs.copyFileSync(new URL
 const { width: W, height: H, fps, duration } = job; const isPortrait = H > W;
 const ff = (args, cwd) => { const r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { stdio: 'inherit', cwd }); if (r.status) throw new Error('ffmpeg failed: ' + args.join(' ').slice(0, 300)); };
 
-// video encoder: --encoder libx264 (default) | h264_nvenc | auto (nvenc if a 1-frame test encode works, else libx264)
+// video encoder: --encoder libx264 (default) | h264_nvenc | h264_videotoolbox | h264_qsv | h264_amf | auto (first hardware encoder whose 1-frame test works: Mac videotoolbox, else NVIDIA, Intel, AMD; else libx264)
 let usedEnc = 'libx264'; let usedWorkers = 1; const tempDirs = []; // frame folders: removed on every exit path unless --keep
 function venc() {
   let enc = String(opt.encoder || 'libx264');
-  if (enc === 'auto') { const t = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=256x256:d=0.1', '-c:v', 'h264_nvenc', '-f', 'null', '-'], { stdio: 'ignore' }); enc = t.status === 0 ? 'h264_nvenc' : 'libx264'; }
+  if (enc === 'auto') { const order = process.platform === 'darwin' ? ['h264_videotoolbox'] : ['h264_nvenc', 'h264_qsv', 'h264_amf']; enc = order.find((e) => spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=256x256:d=0.1', '-pix_fmt', 'yuv420p', '-c:v', e, '-f', 'null', '-'], { stdio: 'ignore' }).status === 0) || 'libx264'; }
   usedEnc = enc; console.log('encoder:', enc);
-  return enc === 'h264_nvenc' ? ['-c:v', 'h264_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '18', '-b:v', '0'] : ['-c:v', 'libx264', '-crf', '16', '-preset', 'medium'];
+  if (enc === 'h264_nvenc') return ['-c:v', 'h264_nvenc', '-preset', 'p5', '-rc', 'vbr', '-cq', '18', '-b:v', '0'];
+  if (enc === 'h264_videotoolbox') return ['-c:v', 'h264_videotoolbox', '-q:v', '65', '-allow_sw', '1'];
+  if (enc === 'h264_qsv') return ['-c:v', 'h264_qsv', '-global_quality', '20'];
+  if (enc === 'h264_amf') return ['-c:v', 'h264_amf', '-rc', 'cqp', '-qp_i', '18', '-qp_p', '20'];
+  return ['-c:v', 'libx264', '-crf', '16', '-preset', 'medium'];
 }
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.json': 'application/json' };
 const srv = await new Promise((res) => { const s = http.createServer((q, r) => { const p = path.join(JOB, decodeURIComponent(new URL(q.url, 'http://x').pathname)); if (!p.startsWith(JOB) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': MIME[path.extname(p).toLowerCase()] || 'application/octet-stream' }); fs.createReadStream(p).pipe(r); }).listen(0, '127.0.0.1', () => res(s)); });

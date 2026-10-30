@@ -16,6 +16,8 @@
 //        [--fx off] [--fx-max 4]  (mix) emotion / sound words get an emotion motion (sway-breeze, jitter-nerve, heart-thump, tilt-wonder, jolt-pop, droop-sigh, boom-shake), at most fx-max times per video, 3 s apart
 //        [--line-ratio 0.42] [--line-gap 6]  duo-tight: small line height vs big line, gap between the lines in px (at 1080)
 //        [--fast off] [--speed 0.7]  entrances get shorter automatically when captions change quickly; --speed fixes the factor
+//        [--preset brand.json] [--save-preset brand.json]  load / save look options (palette, scale, shade, pos, font, deco, fx, line, speed ...)
+//        [--merge-numbers off]  keep number pieces split by speech recognition (default: "39" + ",000원" -> "39,000원")
 //        [--hook off]  turn off the chorus/hook detection (repeated lines become bigger, centred, punchier)
 //        [--shift seconds]   (clip cut later than the audio the timings come from: words move earlier by this much)
 //        [--plan plan.json]   (style=mix only) [{"from":0,"to":8,"style":"hero-key"}, ...] seconds -> fixed style for those phrases
@@ -32,6 +34,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SKILL = path.resolve(HERE, '..');
 const argv = process.argv.slice(2); const opt = {};
 for (let i = 0; i < argv.length; i++) if (argv[i].startsWith('--')) opt[argv[i].slice(2)] = argv[i + 1]?.startsWith('--') || argv[i + 1] == null ? true : argv[++i];
+// presets: --preset brand.json loads saved look options (options typed on the command line win); --save-preset brand.json saves this run's look options
+const PRESET_KEYS = ['palette', 'scale', 'shade', 'pos', 'pos-avoid', 'font', 'font-key', 'deco', 'hook', 'fx', 'fx-max', 'line-ratio', 'line-gap', 'fast', 'speed', 'zone', 'beat-strength', 'merge-numbers'];
+if (opt.preset) { const pf = String(opt.preset); const p = JSON.parse(fs.readFileSync(pf, 'utf8')); for (const [k, v] of Object.entries(p)) if (PRESET_KEYS.includes(k) && opt[k] === undefined) opt[k] = v; console.log('  preset: ' + pf); }
+if (opt['save-preset']) { const p = {}; for (const k of PRESET_KEYS) if (opt[k] !== undefined) p[k] = opt[k]; fs.writeFileSync(String(opt['save-preset']), JSON.stringify(p, null, 1) + '\n'); console.log('  saved preset: ' + opt['save-preset'] + ' ' + JSON.stringify(p)); }
 if (!opt.video || !opt.out) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 11).join('\n')); process.exit(1); }
 
 const PALETTES = {
@@ -64,6 +70,8 @@ else if (opt.lrc) {
   words = blocks.flatMap((b) => { const ls = b.split('\n'); const k = ls.findIndex((l) => l.includes('-->')); if (k < 0) return []; const [a, c] = ls[k].split('-->').map((x) => tsec(x.trim())); return spread(ls.slice(k + 1).join(' ').replace(/<[^>]+>/g, ''), a, c); });
 } else { console.error('need --words, --lrc or --srt'); process.exit(1); }
 // --shift N : the video was cut N seconds after the start of the audio the timings refer to (trimmed clip) -> move every word N seconds earlier
+// number pieces: speech recognition often splits "39,000원" into "39" + ",000원" (or "3" + ".5배"); join them back (--merge-numbers off to keep)
+if (opt['merge-numbers'] !== 'off') { const mw = []; let merged = 0; for (const w of words) { const p = mw[mw.length - 1]; if (p && /\d$/.test(p.text) && /^[,.]\d/.test(w.text) && w.start - p.end < 0.6) { p.text += w.text; p.end = Math.max(p.end, w.end); if (w.lineEnd) p.lineEnd = true; merged++; } else mw.push({ ...w }); } if (merged) console.log('  joined number pieces: ' + merged); words = mw; }
 const shift = +(opt.shift || 0);
 if (shift) words = words.map((w) => ({ ...w, start: Math.max(0, w.start - shift), end: w.end - shift })).filter((w) => w.end > 0.05);
 words = words.filter((w) => w.text && w.end > w.start).sort((a, b) => a.start - b.start).filter((w) => w.start < duration);
