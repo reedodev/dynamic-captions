@@ -1,5 +1,25 @@
 # 바뀐 기록 / Changelog
 
+## 1.4.0 (2026-11-21)
+
+- 새 자막 스타일 30개 / 30 new styles
+  - 릴스: reels-clean, reels-box-stack, reels-tint-boxes, reels-mint-stack, reels-pink-outline, reels-pink-small, reels-lime-impact, reels-italic-grad, reels-gift-box, reels-word-chips, reels-qa, reels-haze, reels-twotone, emoji-lead
+  - 말풍선·대화: bubble-oval-stack, bubble-tail-up, bubble-sticky, bubble-whisper, chat-left, chat-right, chat-yellow, chat-thread, bubble-focus-burst, bubble-spiky, bubble-shout, bubble-hand-ellipse, bubble-cloud, paper-note
+  - 손글씨: sfx-glow, glow-title-hand
+- 이모지 v2: 사전 약 330단어(12묶음) + 문장 분위기, 자리 5가지(`--emoji-pos`), 움직임 6가지(`--emoji-anim`), 간격·최대(`--emoji-gap`, `--emoji-max`), Noto Color Emoji 선택(`--emoji-font`) / emoji v2
+- 글꼴 34종(`scripts/fonts.mjs list|fetch|measure|sheet`), 글꼴별 크기(size-adjust)·자간·장평·기울기, `--tracking --width --slant`, 역할별 `--fonts` / 34 fonts with per-font profiles
+- 고르기 화면 `scripts/picker.mjs` / live style picker
+- 편집용 자막별 투명 레이어 `render.mjs final --layers [prores|webm|png]` + FCPXML·Premiere XML·CSV, 원본과 같은 정확한 프레임율 / per-caption layers at the exact source frame rate
+- `--look` 분위기 묶음 8개, `--mix-pool`, 제목 배지 `--title`, 디버그 `render.mjs probe` / looks, mix pool, title badge, probe
+- mix: 이거다·헉·쉿·속마음·쓰담·끝! 같은 짧은 말에 말풍선·효과음 스타일 자동 배정
+- 작업 폴더에는 쓰는 글꼴만 복사
+
+## 1.3.0 (2026-11-01)
+
+- 새 스타일 34개: 작은 줄+큰 줄 임팩트(duo-*), 한 줄 테마(solo-*), 알약·판·태그, 화자 색 말풍선, quote-frame, laugh-tiles, horror-serif, chip-bar, paper-strip
+- 오버레이: 이름표(tags), 작은 화면(insets), 옆 의성어(sfx, `--sfx auto`)
+- 기본 글꼴 동글 볼드, 무료 글꼴 7종 추가, `--font classic`
+- 위치 고정 `--pin`, 방송 자막 `broadcast`, 차분한 `plain`
 ## 1.2.0 (2026-10-30)
 
 - 새 자막 스타일 30개 (총 72개 + plain + mix) / 30 new styles

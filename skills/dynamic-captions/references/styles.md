@@ -49,3 +49,9 @@ S['my-style'] = {
 - 가사·키네틱 10, 예능·뉴스·레트로 10, 정보·숫자·퀴즈 10. 합성 8초 영상 세로·가로 시안 구역 검사 통과(수정 후).
 - 실제 말하는 영상 2개(합성 음성 18초, AI 영상 8초)로 한 줄 시작부터 최종까지 실행하고 연속 프레임을 확인했습니다.
 - 큰 얼굴 세로 영상: 경고와 가슴 자리를 추가했지만, 시험 영상에서 4문장 중 2문장은 여전히 이마에 겹쳤습니다.
+
+## 1.4.0
+- 새 스타일은 `runtime.js`의 'v1.4 batch G'에 있습니다. 새 스타일 상자에는 `v14` 클래스가 붙어 줄 높이 1.12와 상자 최대 폭(자리의 86%)이 걸립니다. 역할 글꼴(CapPen, CapBrush, CapSfx, CapCute, CapHeavy, CapRound, CapFat)은 `useF(el, 'CapPen')`로 씁니다.
+- 이모지는 `layout()`에서 자리(end/top/corner/burst/side)를 정하고, end·side는 실제 글자 요소로 넣어 크기 맞춤에 포함됩니다. 스타일에 `ownEmoji: true`가 있으면 전역 이모지를 붙이지 않습니다. `stack: true`인 스타일은 앞 2줄을 같이 그리고 stack-tall 자리에 둡니다.
+- `window.phraseTimes()`가 문장별 보이는 시간을 주고, `render.mjs --layers`가 이 시간으로 프레임을 잘라 클립을 만듭니다.
+- 데모 모드: `captions.html?style=<id>&demo=<문구>&emoji=1` 이 스스로 반복 재생합니다(고르기 화면이 사용).

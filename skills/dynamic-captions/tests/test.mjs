@@ -56,9 +56,24 @@ r = run(node, [path.join(S, 'render.mjs'), 'preview', job, '--at', '0.6,1.7,2.7'
 const out = (r.stdout || '') + (r.stderr || '');
 ok(r.status === 0 && fs.existsSync(path.join(job, 'preview', 'overview.png')), 'preview makes overview.png');
 const styleLines = out.split('\n').filter((l) => /\(.+\):/.test(l) && /구역/.test(l));
-ok(styleLines.length >= 74, `preview covers ${styleLines.length} styles (72 + plain + mix expected)`);
+ok(styleLines.length >= 130, `preview covers ${styleLines.length} styles (130+ expected)`);
 { const fjob = path.join(work, 'job-font'); let fr = run(node, [path.join(S, 'make-captions.mjs'), '--video', vid, '--words', path.join(work, 'aligned.json'), '--out', fjob, '--font', 'myeongjo', '--font-key', 'black-han']); ok(fr.status === 0 && /CapMain;src:url\(fonts\/NanumMyeongjo/.test(fs.readFileSync(path.join(fjob, 'captions.html'), 'utf8')), '--font myeongjo is written into the job'); fr = run(node, [path.join(S, 'make-captions.mjs'), '--video', vid, '--words', path.join(work, 'aligned.json'), '--out', path.join(work, 'job-badfont'), '--font', 'no-such-font']); ok(fr.status === 2, 'an unknown --font stops with a clear message'); }
 ok(!/구역 경고/.test(out), 'no style leaves its safe spot');
+// 5b) 1.4: font profile (size-adjust), emoji, title badge, look, per-caption layers, font library
+{
+  const vjob = path.join(work, 'job-v14');
+  let vr = run(node, [path.join(S, 'make-captions.mjs'), '--video', vid, '--words', path.join(work, 'aligned.json'), '--out', vjob, '--font', 'nanumpen', '--emoji', 'auto', '--title', '테스트 🎁', '--look', 'reels-pop']);
+  const html = fs.existsSync(path.join(vjob, 'captions.html')) ? fs.readFileSync(path.join(vjob, 'captions.html'), 'utf8') : '';
+  const data = fs.existsSync(path.join(vjob, 'data.js')) ? fs.readFileSync(path.join(vjob, 'data.js'), 'utf8') : '';
+  ok(vr.status === 0 && /CapMain;src:url\(fonts\/NanumPenScript[^}]*size-adjust:1\d\d%/.test(html), '--font nanumpen is written with its size-adjust');
+  ok(/"mixPool":\["reels-clean"/.test(data) && /"titles":\[\{"text":"테스트/.test(data) && /"deco":\["emoji"\]/.test(data), '--look, --title and --emoji are written into the job');
+  vr = run(node, [path.join(S, 'render.mjs'), 'final', vjob, '--style', 'mix', '--range', '0,2', '--workers', '1', '--encoder', 'libx264', '--layers', '--name', 'v.mp4', '--tmp', tmp]);
+  const ld = path.join(vjob, 'out', 'v-layers'); const movs = fs.existsSync(ld) ? fs.readdirSync(ld).filter((f) => f.endsWith('.mov')) : [];
+  ok(vr.status === 0 && movs.length >= 1 && ['timeline.fcpxml', 'timeline-premiere.xml', 'layers.csv'].every((f) => fs.existsSync(path.join(ld, f))), `--layers writes ${movs.length} clips + FCPXML + Premiere XML + CSV`);
+  if (vr.status !== 0) console.log('  layers stderr: ' + (vr.stderr || vr.stdout || '').split('\n').slice(-6).join(' | '));
+  if (movs.length) { const pf = run('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=pix_fmt,r_frame_rate', '-of', 'csv=p=0', path.join(ld, movs[0])]).stdout.trim(); ok(/yuva/.test(pf) && /24\/1/.test(pf), 'a layer clip keeps alpha and the source frame rate (' + pf + ')'); }
+  vr = run(node, [path.join(S, 'fonts.mjs'), 'list']); ok(vr.status === 0 && /nanumpen/.test(vr.stdout), 'fonts.mjs lists the font library');
+}
 ok(!/작은 자막 [1-9]/.test(out.replace(/작음 /g, '작은 자막 ')) || true, 'size report printed');
 
 // 6) final render (2 s, libx264, 1 worker)

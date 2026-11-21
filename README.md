@@ -33,6 +33,19 @@ Yes, if you:
 - **Lyrics are spelled right.** Speech recognition often mishears rap. If you have the real lyrics, the tool uses your spelling and the audio's timing. Where the two disagree, it cuts short clips so *you* can listen to just those spots.
 - **Fast.** Several Chrome windows draw frames at the same time (a 75-second Full HD clip: 197 s → 64 s).
 
+## New in 1.4
+
+<p align="center"><img src="docs/v14-styles.jpg" alt="reels boxes, emoji, speech bubbles and messenger chat styles on the same line" width="720"></p>
+
+- **Reels looks and emoji captions.** White text with one coloured key word, rows stacked on white, pastel or mint boxes, a big lime line that slams in, a leaning green gradient, and more. Emoji come from the words (about 330 Korean and English keys: coffee ☕, puppy 🐶, free 🆓) or from the mood of the line (ㅋㅋ 🤣, a question 🤔). Five places (end, top, box corner, burst, in front) and six motions. Off by default; turn on with `--emoji auto`.
+- **Speech bubbles and chats.** Bubbles with a tail, oval bubbles that pile up, a messenger thread that alternates left and right, a focus-line circle, a spiky burst, a shout, a dotted whisper, a cloud, a hand-drawn loop and a torn paper note with tape.
+- **34 free Korean fonts** (all OFL): pen and brush handwriting, sound-effect lettering, cute hands, soft rounded, black gothic, fat display, serif. Each font has its own size, tracking, width and slant, so `--font nanumpen` looks as big as the others. Override with `--tracking`, `--width`, `--slant`.
+- **Pick with your own words.** `node scripts/picker.mjs <job> --open` opens every style as a live card in the browser. Type your line and all cards play it; star the ones you like and copy the command.
+- **Layers for editors.** Add `--layers` to `render.mjs final` and every caption becomes its own transparent clip at the source frame rate (29.97 stays 29.97), with an XML for Premiere Pro, an FCPXML for Final Cut Pro and DaVinci Resolve, and a CSV timetable.
+- **Looks.** `--look reels-pop`, `cute-vlog`, `talk-bubble`, `chat`, `calm-explainer`, `variety-show`, `lyric-mood` or `kids-story` sets the style pool, emoji, fonts and colours at once. A fixed title badge (`--title "Title 🎁"`) is new too.
+
+<p align="center"><img src="docs/v14-picker.jpg" alt="the picker: every style plays your own line" width="720"></p>
+<p align="center"><img src="docs/v14-fonts.jpg" alt="34 free Korean fonts with the same line" width="560"></p>
 ## Before you start: what to install
 
 You need four free programs. If you already have them, skip ahead. Open a terminal (Windows: PowerShell; Mac: Terminal) and type the check command to see if each one is installed.
@@ -133,7 +146,7 @@ node $S/render.mjs final job --style mix                   # the whole video
 Your video is in `job/out/` (named `captioned-mix.mp4`). Add `--alpha` if you also want a transparent caption file for your editing program. Add `--encoder auto` to use your graphics card, `--workers 1` if your computer gets slow.
 
 ## Fonts
-Pick a font with `--font`. Five free fonts (SIL OFL, fine for commercial videos) come with the skill:
+Pick a font with `--font`. 34 free Korean fonts are available (all SIL OFL, fine for commercial videos). The 15 most useful ones come with the skill; get the rest with `node scripts/fonts.mjs fetch all`. `node scripts/fonts.mjs list` shows them all and `node scripts/fonts.mjs sheet sample.png --text "your line"` draws one line in every font. Each font has its own size, tracking, width and slant; override with `--tracking -0.04 --width 92 --slant -8`.
 
 | `--font` | Font | Good for |
 |---|---|---|
@@ -142,6 +155,13 @@ Pick a font with `--font`. Five free fonts (SIL OFL, fine for commercial videos)
 | `plex` | IBM Plex Sans KR Bold | calm sans-serif, explainers |
 | `gaegu` | Gaegu Bold | handwriting feel |
 | `myeongjo` | Nanum Myeongjo ExtraBold | serif, poems and quiet videos |
+| `dongle` | Dongle | round variety-show look (the default when you pick nothing) |
+| `nanumpen` / `nanumbrush` | Nanum Pen / Brush Script | handwritten captions and titles |
+| `dokdo-east` | East Sea Dokdo | sound words |
+| `gowun-dodum` | Gowun Dodum | soft vlog captions |
+| `gothic-a1` | Gothic A1 Black | the heavy reels sans |
+| `bagel` | Bagel Fat One | chubby titles |
+| 19 more | `fonts.mjs list` | cute hands, serif, display ... |
 
 ```bash
 node $S/make-captions.mjs ... --font myeongjo                 # one font for everything
@@ -299,6 +319,10 @@ You do not have to remember options. Tell the assistant what you want:
 - Timing for rap and songs is rough, because it comes from Whisper (a word is capped at 1.8 s). There is no forced alignment yet.
 - Only front-facing human faces are found. Cartoons, animals and people seen from behind can be missed. Hands, products and bodies are not avoided.
 - Whether viewers like a style is not tested. Choose from the style sheet.
+- The 1.4 styles, emoji and fonts were tested on synthetic portrait and landscape videos only, not yet on real people or songs.
+- For the editor layers only the files were checked (alpha, frame rate, XML structure); they were not opened in Premiere, Final Cut, DaVinci or CapCut.
+- Fixed-shape bubbles (spiky burst, focus circle) make long lines small. Use them for one to three words.
+- Emoji are picked from a word list, so a match can be off. Fix it with `--emoji-map`.
 
 ## Changes
 

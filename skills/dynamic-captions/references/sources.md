@@ -57,3 +57,10 @@
 | [Motion Canvas](https://github.com/motion-canvas/motion-canvas) | MIT | 목소리에 맞춰 정보 그래픽을 움직이는 방식 개념만 |
 | [Animate.css](https://github.com/animate-css/animate.css) | Hippocratic 2.1 (MIT 아님) | 효과 이름의 분류만 참고, 코드는 쓰지 않음 |
 | [auto-caption](https://github.com/sebetancurch/auto-caption), [auto-subs](https://github.com/mateusz-kow/Auto-Subs), [Capite](https://github.com/muneebkhan08/Capite)(MIT), [karaoke-subs](https://github.com/DorXmoon/karaoke-subs) | 각 저장소 README | 자막 도구에서 자주 쓰는 기능 목록(SRT·VTT·ASS 노래방 내보내기, 여러 영상 처리, 설정 파일, NVENC 인코딩). 코드는 보지 않고 README의 기능 목록만 참고 |
+
+## 1.4.0 (2026-11-21)
+
+| 출처 | 라이선스 | 참고한 것 |
+|---|---|---|
+| 공개된 한국어 자막 모션 시연 영상 (화면 캡처, 계정·로고 미사용) | 영상 속 자막 화면만 관찰 | 릴스 상자·이모지·말풍선·손글씨 빛 제목·제목 배지·미리 보기 화면·자막별 레이어의 문법. 코드·글꼴·로고·문구는 가져오지 않고 직접 새로 그림 |
+| [Google Fonts](https://github.com/google/fonts) 한글 글꼴 22종 + Noto Color Emoji | SIL OFL 1.1 (`assets/fonts/*-OFL.txt`) | `--font`, `--fonts`, 이모지 글꼴. 일부는 `node scripts/fonts.mjs fetch` 로 받음 |

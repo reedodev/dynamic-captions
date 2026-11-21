@@ -1,0 +1,13 @@
+{
+ "_about": "Built-in looks for make-captions --look <id>. A look fills options you did not type (mix pool, emoji, fonts, palette, side sound words). Render with --style mix to use the pool.",
+ "looks": {
+  "reels-pop": { "ko": "릴스 팝(흰 글자·상자·라임 임팩트+이모지)", "options": { "mix-pool": "reels-clean,reels-box-stack,reels-tint-boxes,reels-mint-stack,reels-lime-impact,reels-italic-grad,reels-word-chips,emoji-lead,reels-gift-box", "emoji": "auto", "emoji-gap": 2, "palette": "lime" } },
+  "cute-vlog": { "ko": "귀여운 브이로그(분홍·말풍선·구름·종이 메모)", "options": { "mix-pool": "reels-pink-outline,reels-pink-small,bubble-tail-up,bubble-sticky,bubble-cloud,reels-haze,paper-note,sfx-glow", "emoji": "auto", "emoji-anim": "bounce", "fonts": "round=gowun-dodum,cute=cute", "sfx": "auto", "palette": "rose" } },
+  "talk-bubble": { "ko": "대화 말풍선(타원 쌓기·꼬리·생각·속삭임)", "options": { "mix-pool": "bubble-oval-stack,bubble-tail-up,bubble-cloud,bubble-whisper,bubble-hand-ellipse,bubble-sticky", "emoji": "auto", "emoji-pos": "corner" } },
+  "chat": { "ko": "메신저 대화(좌우 번갈아 쌓임)", "options": { "mix-pool": "chat-thread", "emoji": "auto", "emoji-pos": "end" } },
+  "calm-explainer": { "ko": "차분한 설명(밑줄·줄 올라오기·Q&A·두 톤 상자)", "options": { "mix-pool": "underline-ink,line-rise,glass-card,line-focus,reels-mint-stack,reels-qa,reels-twotone", "emoji": "off", "fx": "off" } },
+  "variety-show": { "ko": "예능(두꺼운 테두리·터짐·외침·ㅋㅋ 타일)", "options": { "mix-pool": "variety-outline,comic-burst,bubble-spiky,bubble-shout,bubble-focus-burst,laugh-tiles,sticker-peel,duo-sticker,reels-lime-impact", "emoji": "auto", "emoji-pos": "burst", "sfx": "auto", "palette": "gold" } },
+  "lyric-mood": { "ko": "감성 가사(손글씨 빛·번짐·노래방)", "options": { "mix-pool": "karaoke-fill,glow-title-hand,reels-haze,chorus-zoom,fill-rise,neon-glow,solo-night-glint", "emoji": "off", "fx": "off" } },
+  "kids-story": { "ko": "아이·동화(구름·색종이·통통)", "options": { "mix-pool": "bubble-cloud,paper-cut,tape-strip,reels-pink-outline,bounce-word,bubble-tail-up", "emoji": "auto", "emoji-anim": "bounce", "fonts": "cute=cute,round=gowun-dodum", "palette": "sky" } }
+ }
+}

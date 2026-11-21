@@ -19,6 +19,8 @@ if (!mode || !jobArg) { console.log(fs.readFileSync(new URL(import.meta.url), 'u
 const JOB = path.resolve(jobArg); if (mode !== 'frames') fs.copyFileSync(new URL('./runtime.js', import.meta.url), path.join(JOB, 'runtime.js')); // always render with the current runtime (worker processes reuse the copy the parent just made)
  const job = JSON.parse(fs.readFileSync(path.join(JOB, 'job.json'), 'utf8'));
 const { width: W, height: H, fps, duration } = job; const isPortrait = H > W;
+// exact source frame rate (29.97 = 30000/1001 ...): frame n is drawn at n / FR seconds, so caption layers line up frame-exactly in an editor
+const RATE = job.rate && job.rate.num ? job.rate : { num: fps, den: 1 }; const FR = RATE.num / RATE.den; const FRS = RATE.den === 1 ? String(RATE.num) : RATE.num + '/' + RATE.den;
 const ff = (args, cwd) => { const r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { stdio: 'inherit', cwd }); if (r.status) throw new Error('ffmpeg failed: ' + args.join(' ').slice(0, 300)); };
 
 // video encoder: --encoder libx264 (default) | h264_nvenc | h264_videotoolbox | h264_qsv | h264_amf | auto (first hardware encoder whose 1-frame test works: Mac videotoolbox, else NVIDIA, Intel, AMD; else libx264)
@@ -61,9 +63,9 @@ await send('Emulation.setDefaultBackgroundColorOverride', { color: { r: 0, g: 0,
 async function load(style) {
   for (let attempt = 0; attempt < 3; attempt++) {
     await send('Page.navigate', { url: `http://127.0.0.1:${srv.address().port}/captions.html?style=${style}&n=${attempt}` });
-    for (let i = 0; i < 100; i++) { if (await ev('window.ready === true').catch(() => false)) return; await new Promise((r) => setTimeout(r, 100)); }
+    for (let i = 0; i < 300; i++) { if (await ev('window.ready === true').catch(() => false)) return; await new Promise((r) => setTimeout(r, 100)); }
   }
-  throw new Error('captions page never ready: ' + (errors.join(' | ') || 'no page error'));
+  throw new Error('captions page never ready (style ' + style + '): ' + (errors.join(' | ') || 'no page error'));
 }
 const png = async (t, file) => {
   await ev(`window.seek(${t}).then(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(1)))))`);
@@ -77,9 +79,12 @@ async function zoneCheck(times) {
     const why = [];
     const pr = await ev('window.posRect && window.posRect()'); // the spot (left/right/top/bottom) this caption was given
     // hard rules: landscape keeps the bottom area free for YouTube captions; portrait keeps bottom ~30%, top 10% and right 10% (app UI) free
+    if (job.pin) { if (b.y1 > 0.985 * H || b.y0 < 0.01 * H) why.push('화면 위아래 밖으로 나감 (pin)'); } // --pin: user-chosen spot, platform-safe areas are not enforced (only the frame edge)
+    else {
     if (b.y1 > (zb + tol + (portrait ? 0.04 : 0)) * H) why.push('아래 금지 구역 침범 ' + (b.y1 / H * 100).toFixed(0) + '%');
     if (portrait && b.y0 < 0.10 * H) why.push('위 버튼 구역 침범 ' + (b.y0 / H * 100).toFixed(0) + '%');
     if (portrait && b.x1 > 0.90 * W) why.push('오른쪽 버튼 구역 침범 ' + (b.x1 / W * 100).toFixed(0) + '%');
+    }
     if (b.x0 < 0.03 * W || b.x1 > 0.97 * W) why.push('좌우 잘림 위험');
     if (pr) { const m = 0.03; if (b.y0 < (pr.t - m) * H || b.y1 > (pr.b + m) * H || b.x0 < (pr.l - m) * W || b.x1 > (pr.r + m) * W) why.push(`자리(${(pr.l * 100).toFixed(0)}-${(pr.r * 100).toFixed(0)}% × ${(pr.t * 100).toFixed(0)}-${(pr.b * 100).toFixed(0)}%) 밖으로 나감`); }
     if (why.length) bad.push({ t: +t.toFixed(2), why: why.join(', '), box: [b.x0, b.y0, b.x1, b.y1].map(Math.round) });
@@ -110,6 +115,62 @@ const cleanup = async () => {
   const rm = (p) => { try { fs.rmSync(p, { recursive: true, force: true, maxRetries: 25, retryDelay: 200 }); } catch (e) { if (process.env.DYNCAP_DEBUG) console.error('rm failed', p, e.code); } };
   rm(prof); if (!opt.keep) tempDirs.forEach(rm);
 };
+
+// ---- --layers [prores|webm|png]: one transparent clip per caption (+ overlay-only stretches), at the source's exact frame rate,
+// plus timeline files that place them on the right frame: FCPXML 1.9 (Final Cut Pro, DaVinci Resolve), FCP7 XML (Premiere Pro), CSV (CapCut and others)
+async function exportLayers({ work, outDir, name, n0, N, vis, ra }) {
+  const fmt = ['webm', 'png'].includes(String(opt.layers)) ? String(opt.layers) : 'prores';
+  const dir = path.join(outDir, name.replace(/\.mp4$/, '') + '-layers'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  const ph = await ev('window.phraseTimes()'); const label = new Array(N).fill(null);
+  for (let n = 0; n < N; n++) { if (!vis[n]) continue; const t = (n0 + n) / FR; const p = ph.find((q) => t >= q.vs && t < q.ve); label[n] = p ? 'p' + p.k : 'ov'; }
+  const segs = []; for (let n = 0; n < N; n++) { if (!label[n]) continue; const last = segs[segs.length - 1]; if (last && last.label === label[n] && last.end === n) last.end = n + 1; else segs.push({ label: label[n], start: n, end: n + 1 }); }
+  // overlay-only gaps shorter than ~0.3 s (title badge between two captions) join the caption before them, so the editor gets fewer tiny clips
+  for (let i = segs.length - 1; i >= 0; i--) { const g = segs[i]; if (g.label !== 'ov' || g.end - g.start >= Math.round(FR * 0.3)) continue; const prev = segs[i - 1], next = segs[i + 1]; if (prev && prev.end === g.start) { prev.end = g.end; segs.splice(i, 1); } else if (next && next.start === g.end) { next.start = g.start; segs.splice(i, 1); } }
+  const tb = Math.round(FR), ntsc = RATE.den === 1001;
+  const tc = (f) => { const ff2 = f % tb, s = Math.floor(f / tb); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60, ff2].map((x) => String(x).padStart(2, '0')).join(':'); };
+  const slug = (s) => s.replace(/[\\/:*?"<>|\s]+/g, '_').replace(/_+/g, '_').slice(0, 24);
+  const ext = fmt === 'prores' ? '.mov' : fmt === 'webm' ? '.webm' : '';
+  segs.forEach((g, i) => {
+    const p = g.label === 'ov' ? null : ph.find((q) => 'p' + q.k === g.label); g.text = p ? p.text : '(overlay)'; g.style = p ? p.sid : '';
+    g.file = `${String(i + 1).padStart(3, '0')}_${tc(n0 + g.start).replace(/:/g, '-')}_${slug(g.text)}${ext}`; const len = g.end - g.start;
+    const inp = ['-framerate', FRS, '-start_number', String(g.start), '-i', path.join(work, 'f_%06d.png'), '-frames:v', String(len)];
+    if (fmt === 'prores') ff([...inp, '-c:v', 'prores_ks', '-profile:v', '4444', '-pix_fmt', 'yuva444p10le', '-vendor', 'apl0', path.join(dir, g.file)]);
+    else if (fmt === 'webm') ff([...inp, '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0', '-crf', '28', '-auto-alt-ref', '0', '-row-mt', '1', path.join(dir, g.file)]);
+    else { const sub = path.join(dir, g.file); fs.mkdirSync(sub, { recursive: true }); for (let k = 0; k < len; k++) fs.copyFileSync(path.join(work, `f_${String(g.start + k).padStart(6, '0')}.png`), path.join(sub, `${String(k).padStart(5, '0')}.png`)); }
+  });
+  // CSV: start / end frames and timecodes of every clip on the timeline (the timeline starts at the --range start)
+  fs.writeFileSync(path.join(dir, 'layers.csv'), '\ufeffno,file,start_frame,end_frame,start_tc,end_tc,start_sec,end_sec,style,text\n' + segs.map((g, i) => [i + 1, g.file, n0 + g.start, n0 + g.end, tc(n0 + g.start), tc(n0 + g.end), ((n0 + g.start) / FR).toFixed(3), ((n0 + g.end) / FR).toFixed(3), g.style, '"' + g.text.replace(/"/g, '""') + '"'].join(',')).join('\n') + '\n');
+  const furl = (p) => 'file:///' + path.resolve(p).replace(/\\/g, '/').replace(/^\/+/, '').split('/').map((x, i) => (i === 0 && /:$/.test(x) ? x : encodeURIComponent(x))).join('/');
+  const rt = (f) => `${f * RATE.den}/${RATE.num}s`; const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  if (fmt !== 'png') {
+    const totalSrc = Math.round(duration * FR);
+    // FCPXML 1.9: the source video on the main storyline, every caption clip connected above it (lane 1) on its exact frame
+    const fcp = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n<fcpxml version="1.9">\n <resources>\n  <format id="r1" frameDuration="${RATE.den}/${RATE.num}s" width="${W}" height="${H}"/>\n  <asset id="v0" name="${esc(path.basename(job.video))}" start="0s" duration="${rt(totalSrc)}" hasVideo="1" hasAudio="1" format="r1" audioSources="1" audioChannels="2"><media-rep kind="original-media" src="${esc(furl(job.video))}"/></asset>\n` +
+      segs.map((g, i) => `  <asset id="c${i + 1}" name="${esc(g.file)}" start="0s" duration="${rt(g.end - g.start)}" hasVideo="1" format="r1"><media-rep kind="original-media" src="${esc(furl(path.join(dir, g.file)))}"/></asset>`).join('\n') +
+      `\n </resources>\n <library>\n  <event name="captions">\n   <project name="${esc(name.replace(/\.mp4$/, ''))}">\n    <sequence format="r1" duration="${rt(N)}" tcStart="0s" tcFormat="NDF">\n     <spine>\n      <asset-clip ref="v0" name="${esc(path.basename(job.video))}" offset="0s" start="${rt(n0)}" duration="${rt(N)}" format="r1">\n` +
+      segs.map((g, i) => `       <asset-clip ref="c${i + 1}" lane="1" name="${esc(g.text)}" offset="${rt(n0 + g.start)}" start="0s" duration="${rt(g.end - g.start)}" format="r1"/>`).join('\n') +
+      `\n      </asset-clip>\n     </spine>\n    </sequence>\n   </project>\n  </event>\n </library>\n</fcpxml>\n`;
+    fs.writeFileSync(path.join(dir, 'timeline.fcpxml'), fcp);
+    // FCP7 XML (xmeml 4): Premiere Pro imports this; V1 = source video, V2 = captions
+    const rate = `<rate><timebase>${tb}</timebase><ntsc>${ntsc ? 'TRUE' : 'FALSE'}</ntsc></rate>`; const pu = (p) => 'file://localhost/' + path.resolve(p).replace(/\\/g, '/').replace(/^\/+/, '').split('/').map((x, i) => (i === 0 && /:$/.test(x) ? x : encodeURIComponent(x))).join('/');
+    const sc = `<samplecharacteristics><width>${W}</width><height>${H}</height></samplecharacteristics>`;
+    const xm = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE xmeml>\n<xmeml version="4">\n<sequence id="seq1"><name>${esc(name.replace(/\.mp4$/, ''))}</name><duration>${N}</duration>${rate}<media><video><format>${sc}</format>\n` +
+      `<track><clipitem id="src"><name>${esc(path.basename(job.video))}</name><duration>${totalSrc}</duration>${rate}<start>0</start><end>${N}</end><in>${n0}</in><out>${n0 + N}</out><file id="file-src"><name>${esc(path.basename(job.video))}</name><pathurl>${esc(pu(job.video))}</pathurl>${rate}<duration>${totalSrc}</duration><media><video>${sc}</video><audio/></media></file></clipitem></track>\n<track>` +
+      segs.map((g, i) => `<clipitem id="cap${i + 1}"><name>${esc(g.text)}</name><duration>${g.end - g.start}</duration>${rate}<start>${g.start}</start><end>${g.end}</end><in>0</in><out>${g.end - g.start}</out><file id="file-cap${i + 1}"><name>${esc(g.file)}</name><pathurl>${esc(pu(path.join(dir, g.file)))}</pathurl>${rate}<duration>${g.end - g.start}</duration><media><video>${sc}</video></media></file></clipitem>`).join('\n') +
+      `</track></video></media></sequence>\n</xmeml>\n`;
+    fs.writeFileSync(path.join(dir, 'timeline-premiere.xml'), xm);
+  }
+  fs.writeFileSync(path.join(dir, 'README.txt'), [
+    `자막 레이어 ${segs.length}개 (${fmt === 'prores' ? 'ProRes 4444 투명 MOV' : fmt === 'webm' ? 'VP9 투명 WebM' : '투명 PNG 연속 그림'}), 프레임율 ${FRS} (원본과 같음), 크기 ${W}x${H}`,
+    '', '- layers.csv : 클립마다 시작·끝 프레임과 타임코드. 타임라인 0초 = 원본 영상 ' + ra + '초 지점.',
+    fmt !== 'png' ? '- Final Cut Pro / DaVinci Resolve : 파일 > 가져오기 > timeline.fcpxml (원본 영상 위에 자막이 제자리에 놓임)' : '',
+    fmt !== 'png' ? '- Premiere Pro : 파일 > 가져오기 > timeline-premiere.xml (V1 원본, V2 자막)' : '',
+    '- CapCut 등 : 클립 파일을 layers.csv 의 시작 시각에 맞춰 원본 위 트랙에 올립니다. 투명 MOV가 검게 보이면 --layers webm 이나 --layers png 로 다시 뽑습니다.',
+    '- 자막 문구를 고치려면 make-captions 부터 다시 만들고 render final --layers 를 다시 실행합니다.',
+    '- 편집 프로그램별 가져오기는 이 스킬에서 직접 열어 시험하지 못했습니다(파일 형식만 맞춤).',
+  ].filter((x) => x !== '').join('\n') + '\n');
+  return { dir, count: segs.length, format: fmt };
+}
 
 try {
   if (mode === 'preview') {
@@ -147,21 +208,24 @@ try {
     fs.writeFileSync(path.join(dir, 'qa.json'), JSON.stringify({ at, zone: job.zone, qa, report }, null, 1));
     console.log('preview moments (s):', at.join(', ')); console.log('overview:', path.join(dir, 'overview.png'));
     for (const s of styles) console.log(`  ${s} (${labels[s]}): ${path.join(dir, `style-${s}.png`)}  ${qa[s].length ? '구역 경고 ' + JSON.stringify(qa[s]) : '구역 OK'}  | 글자 최소 ${sizeInfo[s].min}px, 작음 ${sizeInfo[s].small}개, 자리 옮김 ${sizeInfo[s].moved}개, 얼굴 겹침 ${sizeInfo[s].onFace}개`);
+  } else if (mode === 'probe') {
+    // debug: where is the caption at --at t for --style s (bounds, spot, sizes)
+    await load(opt.style || 'block-sweep'); for (const t of String(opt.at || '1').split(',').map(Number)) { await ev(`window.seek(${t})`); console.log(t, JSON.stringify({ bounds: await ev('window.bounds()'), spot: await ev('window.posRect && window.posRect()'), info: await ev('window.layoutInfo && window.layoutInfo()'), expr: opt.expr ? await ev(String(opt.expr)) : undefined })); }
   } else if (mode === 'frames') {
     // internal: a worker process draws frames [n0, n1) into the shared work folder (file index = index0 + n - n0)
     await load(opt.style); const wn0 = +opt.n0, wn1 = +opt.n1, i0 = +opt.index0; const wblank = path.join(opt.work, `blank-${i0}.png`); await png(-5, wblank);
-    for (let n = wn0; n < wn1; n++) { const t = n / fps; const f = path.join(opt.work, `f_${String(i0 + n - wn0).padStart(6, '0')}.png`); if (await ev(`window.visible(${t})`)) await png(t, f); else fs.copyFileSync(wblank, f); }
+    for (let n = wn0; n < wn1; n++) { const t = n / FR; const f = path.join(opt.work, `f_${String(i0 + n - wn0).padStart(6, '0')}.png`); if (await ev(`window.visible(${t})`)) await png(t, f); else fs.copyFileSync(wblank, f); }
   } else if (mode === 'final') {
     const style = opt.style; if (!style) throw new Error('--style required');
     const vs = fs.statSync(job.video);
     if (job.videoStat && (vs.size !== job.videoStat.size || Math.abs(vs.mtimeMs - job.videoStat.mtimeMs) > 1000) && !opt.force) throw new Error('영상 파일이 작업 폴더를 만든 뒤 바뀌었습니다. 시안 승인은 무효입니다. make-captions.mjs부터 다시 실행하세요(--force로 무시 가능).');
     await load(style); const report = await qaReport();
     const [ra, rb] = opt.range ? String(opt.range).split(',').map(Number) : [0, duration];
-    const n0 = Math.round(ra * fps), n1 = Math.round(Math.min(rb, duration) * fps), N = n1 - n0;
+    const n0 = Math.round(ra * FR), n1 = Math.round(Math.min(rb, duration) * FR), N = n1 - n0;
     const tmpBase = opt.tmp || process.env.DYNCAP_TMP || LOCAL.tmp || path.join(os.tmpdir(), 'dynamic-captions'); fs.mkdirSync(tmpBase, { recursive: true });
     const work = path.join(tmpBase, 'dyncap-' + path.basename(JOB) + '-' + style + '-' + Date.now()); fs.mkdirSync(work, { recursive: true }); tempDirs.push(work);
     const blank = path.join(work, 'blank.png'); await png(-5, blank);
-    const times = []; for (let n = 0; n < N; n++) times.push((n0 + n) / fps);
+    const times = []; for (let n = 0; n < N; n++) times.push((n0 + n) / FR);
     const vis = []; for (const t of times) vis.push(await ev(`window.visible(${t})`));
     // zone QA on visible moments (every ~0.2 s)
     const bad = await zoneCheck(times.filter((t, n) => vis[n] && n % Math.max(1, Math.round(fps * 0.2)) === 0));
@@ -187,19 +251,21 @@ try {
     usedWorkers = workers;
     const outDir = path.join(JOB, 'out'); fs.mkdirSync(outDir, { recursive: true });
     const name = opt.name || `captioned-${style}${opt.range ? `-${ra}-${rb}` : ''}.mp4`; const out = path.join(outDir, name);
-    ff(['-ss', String(ra), '-t', String(N / fps), '-i', job.video, '-framerate', String(fps), '-start_number', '0', '-i', path.join(work, 'f_%06d.png'), '-filter_complex', '[0:v][1:v]overlay=shortest=1:format=auto,format=yuv420p[v]', '-map', '[v]', '-map', '0:a?', ...venc(), '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', out]);
+    ff(['-ss', String(ra), '-t', String(N / FR), '-i', job.video, '-framerate', FRS, '-start_number', '0', '-i', path.join(work, 'f_%06d.png'), '-filter_complex', '[0:v][1:v]overlay=shortest=1:format=auto,format=yuv420p[v]', '-map', '[v]', '-map', '0:a?', ...venc(), '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart', out]);
     let alpha = null;
-    if (opt.alpha) { alpha = path.join(outDir, name.replace(/\.mp4$/, '') + '-alpha.mov'); ff(['-framerate', String(fps), '-start_number', '0', '-i', path.join(work, 'f_%06d.png'), '-c:v', 'prores_ks', '-profile:v', '4444', '-pix_fmt', 'yuva444p10le', alpha]); }
+    if (opt.alpha) { alpha = path.join(outDir, name.replace(/\.mp4$/, '') + '-alpha.mov'); ff(['-framerate', FRS, '-start_number', '0', '-i', path.join(work, 'f_%06d.png'), '-c:v', 'prores_ks', '-profile:v', '4444', '-pix_fmt', 'yuva444p10le', alpha]); }
+    let layerInfo = null;
+    if (opt.layers) layerInfo = await exportLayers({ work, outDir, name, n0, N, vis, ra });
     // key=value output: the csv field order and a trailing comma differ between files, so reading the last csv field gave a false 'frames differ' warning
     const prRaw = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-count_frames', '-show_entries', 'stream=nb_read_frames,width,height', '-of', 'default=nw=1', out], { encoding: 'utf8' }).stdout;
     const kv = Object.fromEntries(prRaw.split(/\r?\n/).filter(Boolean).map((l) => l.split('=')));
     const pr = `${kv.width},${kv.height},${kv.nb_read_frames}`;
     const got = +kv.nb_read_frames; const diff = Math.abs(got - N);
     console.log(`check: ${pr} (expected about ${N} frames, difference ${diff})` + (diff > 2 ? '  ⚠ 프레임 수가 다릅니다. 원본의 영상 줄기 길이·가변 프레임율을 ffprobe로 확인하세요' : ''));
-    ff(['-i', out, '-vf', `fps=1/${Math.max(1, Math.round(N / fps / 20))},scale=${H > W ? 216 : 384}:-2,tile=${H > W ? 10 : 5}x2`, '-frames:v', '1', path.join(outDir, name.replace(/\.mp4$/, '') + '-sheet.png')]);
+    ff(['-i', out, '-vf', `fps=1/${Math.max(1, Math.round(N / FR / 20))},scale=${H > W ? 216 : 384}:-2,tile=${H > W ? 10 : 5}x2`, '-frames:v', '1', path.join(outDir, name.replace(/\.mp4$/, '') + '-sheet.png')]);
     if (!opt.keep) fs.rmSync(work, { recursive: true, force: true });
-    fs.writeFileSync(out.replace(/\.mp4$/, '.json'), JSON.stringify({ made: new Date().toISOString(), video: job.video, videoStat: job.videoStat, style, range: [ra, rb], encoder: usedEnc, workers: usedWorkers, frames: N, fps, timingPrecision: job.precision || 'unknown', approxWords: job.approxWords, zoneWarnings: bad.length, qa: report, mixPlan: style === 'mix' ? await ev('window.mixPlan') : undefined, posPlan: await ev('window.posPlan') }, null, 1));
-    console.log('video:', out); if (alpha) console.log('alpha:', alpha); console.log('sheet:', path.join(outDir, name.replace(/\.mp4$/, '') + '-sheet.png'));
+    fs.writeFileSync(out.replace(/\.mp4$/, '.json'), JSON.stringify({ made: new Date().toISOString(), video: job.video, videoStat: job.videoStat, style, range: [ra, rb], encoder: usedEnc, workers: usedWorkers, frames: N, fps, rate: RATE, layers: layerInfo || undefined, timingPrecision: job.precision || 'unknown', approxWords: job.approxWords, zoneWarnings: bad.length, qa: report, mixPlan: style === 'mix' ? await ev('window.mixPlan') : undefined, posPlan: await ev('window.posPlan') }, null, 1));
+    console.log('video:', out); if (alpha) console.log('alpha:', alpha); if (layerInfo) console.log('layers:', layerInfo.dir, '(' + layerInfo.count + ' clips, ' + layerInfo.format + ')'); console.log('sheet:', path.join(outDir, name.replace(/\.mp4$/, '') + '-sheet.png'));
   } else throw new Error('unknown mode ' + mode);
 } finally { await cleanup(); }
 
