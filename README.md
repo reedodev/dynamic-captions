@@ -143,7 +143,7 @@ node $S/render.mjs final job --style mix --range 0,20      # only the first 20 s
 node $S/render.mjs final job --style mix                   # the whole video
 ```
 
-Your video is in `job/out/` (named `captioned-mix.mp4`). Add `--alpha` if you also want a transparent caption file for your editing program. Add `--encoder auto` to use your graphics card, `--workers 1` if your computer gets slow.
+Your video is in `job/out/` (named `captioned-mix.mp4`). Add `--alpha` if you also want a transparent caption file for your editing program. Add `--encoder auto` to use your graphics card (NVIDIA, or the built-in encoder on an Apple Silicon Mac), `--codec h265` for an H.265 (HEVC) file, `--workers 1` if your computer gets slow.
 
 ## Fonts
 Pick a font with `--font`. 34 free Korean fonts are available (all SIL OFL, fine for commercial videos). The 15 most useful ones come with the skill; get the rest with `node scripts/fonts.mjs fetch all`. `node scripts/fonts.mjs list` shows them all and `node scripts/fonts.mjs sheet sample.png --text "your line"` draws one line in every font. Each font has its own size, tracking, width and slant; override with `--tracking -0.04 --width 92 --slant -8`.
@@ -288,6 +288,7 @@ You do not have to remember options. Tell the assistant what you want:
 | "add emoji / an underline" | `--deco emoji,line` (off by default) |
 | "change the color" | `--palette mint` (gold, mint, sky, rose, lime) |
 | "make it faster" | `--workers 4 --encoder auto` |
+| "make it H.265 (HEVC)" | `--codec h265` (with `--encoder auto` it uses the graphics card) |
 | "I also want a transparent caption file" | `--alpha` |
 | "I will choose the look for each sentence" | `--plan plan.json` |
 | "no emotion effects" / "only twice" | `--fx off` / `--fx-max 2` |

@@ -143,7 +143,7 @@ node $S/render.mjs final job --style mix --range 0,20      # 앞 20초만
 node $S/render.mjs final job --style mix                   # 영상 전체
 ```
 
-완성된 영상은 `job/out/`에 `captioned-mix.mp4`로 생깁니다. 편집 프로그램에 올릴 투명 자막 파일도 필요하면 `--alpha`, 그래픽카드를 쓰려면 `--encoder auto`, 컴퓨터가 느려지면 `--workers 1`을 붙이세요.
+완성된 영상은 `job/out/`에 `captioned-mix.mp4`로 생깁니다. 편집 프로그램에 올릴 투명 자막 파일도 필요하면 `--alpha`, 그래픽카드(NVIDIA, 또는 Apple Silicon 맥의 내장 인코더)를 쓰려면 `--encoder auto`, H.265(HEVC) 파일로 받으려면 `--codec h265`, 컴퓨터가 느려지면 `--workers 1`을 붙이세요.
 
 ## 글꼴
 `--font` 로 글꼴을 고릅니다. 무료 한글 글꼴 34종(모두 SIL OFL, 상업 영상에도 사용 가능)을 쓸 수 있습니다. 자주 쓰는 15종은 함께 들어 있고, 나머지는 `node scripts/fonts.mjs fetch all` 로 한 번에 받습니다. `node scripts/fonts.mjs list` 가 전체 목록을, `node scripts/fonts.mjs sheet 견본.png --text "내 문구"` 가 같은 문구를 모든 글꼴로 그린 그림을 만듭니다. 글꼴마다 크기·자간·장평·기울기를 맞춰 두었고 `--tracking -0.04 --width 92 --slant -8` 처럼 바꿀 수 있습니다.
@@ -288,6 +288,7 @@ node $S/make-captions.mjs ... --font "C:\fonts\MyFont.ttf"     # 내 글꼴 파�
 | "이모지 / 밑줄 넣어 줘" | `--deco emoji,line` (기본은 꺼져 있음) |
 | "색을 바꿔 줘" | `--palette mint` (gold, mint, sky, rose, lime) |
 | "빨리 만들어 줘" | `--workers 4 --encoder auto` |
+| "H.265(HEVC)로 만들어 줘" | `--codec h265` (`--encoder auto`와 같이 쓰면 그래픽카드 사용) |
 | "투명 자막 파일도 줘" | `--alpha` |
 | "문장마다 모양은 내가 정할게" | `--plan plan.json` |
 | "감정 효과는 빼 줘" / "2번만" | `--fx off` / `--fx-max 2` |
